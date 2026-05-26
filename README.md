@@ -33,10 +33,11 @@ Vibe coding with Claude Code, Codex, Gemini, or Grok? You're burning tokens — 
 
 | Tool | Status | Data source |
 |---|---|---|
-| Claude Code | ✅ Phase 1 | `~/.claude/projects/**/*.jsonl` |
-| OpenAI Codex | ✅ Phase 1 | `~/.codex/sessions/**/*.jsonl` *(to confirm)* |
-| Gemini CLI | 🚧 Future | TBD |
-| Grok CLI | 🚧 Future | TBD |
+| Claude Code | ✅ Phase 1 | `~/.claude/stats-cache.json` + `~/.claude/projects/` |
+| OpenAI Codex | ✅ Phase 1 | `~/.codex/state_5.sqlite` (`threads` table) |
+| Ollama | 🚧 Phase 1.5 | `~/.ollama/logs/` (live tail) — deferred: Ollama does not persist token counts |
+
+> By design, Burnbar sticks to **three providers**: closed-cloud (Claude), closed-cloud (Codex), open-local (Ollama). We will not expand to 40+ providers — that's CodexBar's path; ours is depth + cross-device + leaderboard.
 
 ### Status
 
@@ -78,10 +79,11 @@ MIT © Andy Wu
 
 | 工具 | 状态 | 数据源 |
 |---|---|---|
-| Claude Code | ✅ Phase 1 | `~/.claude/projects/**/*.jsonl` |
-| OpenAI Codex | ✅ Phase 1 | `~/.codex/sessions/**/*.jsonl`（待确认）|
-| Gemini CLI | 🚧 计划中 | TBD |
-| Grok CLI | 🚧 计划中 | TBD |
+| Claude Code | ✅ Phase 1 | `~/.claude/stats-cache.json` + `~/.claude/projects/` |
+| OpenAI Codex | ✅ Phase 1 | `~/.codex/state_5.sqlite` (`threads` 表) |
+| Ollama | 🚧 Phase 1.5 | `~/.ollama/logs/`（实时 tail）——延后：Ollama 不持久化 token 统计 |
+
+> Burnbar 刻意只做**三个 provider**：闭源云 (Claude)、闭源云 (Codex)、开源本地 (Ollama)。不会扩展到 40+ provider——那是 CodexBar 的路；我们走 "做深 + 跨设备 + 全球榜单"。
 
 ### 项目状态
 
