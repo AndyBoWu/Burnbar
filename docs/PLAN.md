@@ -2,7 +2,7 @@
 
 > Status: **OUTLINE + SUB-TICKETS — ready for GitHub issue creation.** Each sub-ticket maps to one GitHub Issue under its Epic (also an Issue) under its Milestone.
 
-Four milestones. M1 + M1.5 ship Phase 1; M2 ships Phase 2; M3 ships Phase 3. Each milestone is independently shippable. Each epic is independently demoable. Each sub-ticket is one PR (half-day to one-day of work).
+Three milestones. M1 ships Phase 1; M2 ships Phase 2; M3 ships Phase 3. Each milestone is independently shippable. Each epic is independently demoable. Each sub-ticket is one PR (half-day to one-day of work).
 
 ## Product form factor
 
@@ -10,38 +10,36 @@ Four milestones. M1 + M1.5 ship Phase 1; M2 ships Phase 2; M3 ships Phase 3. Eac
 
 - `LSUIElement = YES` — no Dock icon, menu bar icon is the primary entry.
 - Menu bar **popover** is the glance UI: today's burn, progress bars, reset countdowns, quick toggles. 90% of usage.
-- Native **Settings window** opens on demand for configuration that doesn't fit a popover: language, provider toggles, leaderboard opt-in, privacy controls, devices list. 10% of usage.
+- Native **Settings window** opens on demand for configuration that doesn't fit a popover: provider toggles, leaderboard opt-in, privacy controls, devices list. 10% of usage.
 - Same pattern as CodexBar, 1Password menu helper, CleanShot X. Avoids the standalone-app trap of "open Dock → wait → see number → close" for what should be a glance.
 
 ## Provider scope
 
-**Three providers, no more.** This is a deliberate boundary against CodexBar-style 40-provider sprawl.
+**Two providers, no more.** This is a deliberate boundary against CodexBar-style 40-provider sprawl.
 
 1. **Claude Code** — closed cloud, subscription. M1.
 2. **OpenAI Codex** — closed cloud, subscription. M1.
-3. **Ollama** — open source, local. **M1.5** (Ollama doesn't persist token counts; requires a different implementation strategy than Claude/Codex — see [data-sources.md](data-sources.md)).
 
-Anything beyond these three (Gemini, Grok, Cursor, Copilot, …) is out of scope — they conflict with the privacy thesis (need browser cookies / OAuth) or are pass-through wrappers.
+Anything beyond these two (Gemini, Grok, Cursor, Copilot, Ollama, …) is out of scope — they conflict with the privacy thesis (need browser cookies / OAuth), are pass-through wrappers, or don't persist token counts.
 
 ---
 
 ## Milestone 1 — Local Swift App (Phase 1)
 
-**Goal**: Native macOS menu bar app reading Claude Code + Codex CLI logs locally. No sync. No leaderboard. No Ollama yet.
+**Goal**: Native macOS menu bar app reading Claude Code + Codex CLI logs locally. No sync. No leaderboard.
 
-**Definition of done**: User downloads DMG, drags to Applications, sees real token numbers from `~/.claude` and `~/.codex` within 5 seconds of launch. Bilingual UI (EN/ZH).
+**Definition of done**: User downloads DMG, drags to Applications, sees real token numbers from `~/.claude` and `~/.codex` within 5 seconds of launch.
 
 | # | Epic | One-line scope |
 |---|---|---|
 | 1.1 | **Project scaffold** | Xcode project with `LSUIElement=YES`, SwiftLint/SwiftFormat, GitHub Actions CI |
-| 1.2 | **i18n foundation** | String Catalog (`.xcstrings`) with `en` + `zh-Hans`, locale override, lint rule against hardcoded strings |
-| 1.3 | **Claude Code parser** | Read `~/.claude/stats-cache.json` + today's JSONL delta; emit unified `UsageRecord` |
-| 1.4 | **Codex parser** | Read `~/.codex/state_5.sqlite` `threads` table; emit unified `UsageRecord` |
-| 1.5 | **Token cost engine** | Pricing table (Sonnet/Opus/Haiku/GPT-5 variants, input/output/cache), $/day, monthly projection |
-| 1.6 | **Menu bar UI + Settings window** | Popover (provider tiles, burn bars, reset countdowns) + minimal Settings (language, toggles, about) |
-| 1.7 | **Release pipeline** | DMG + PKG build, ad-hoc signing for v0, LaunchAgent template, Sparkle skeleton |
+| 1.2 | **Claude Code parser** | Read `~/.claude/stats-cache.json` + today's JSONL delta; emit unified `UsageRecord` |
+| 1.3 | **Codex parser** | Read `~/.codex/state_5.sqlite` `threads` table; emit unified `UsageRecord` |
+| 1.4 | **Token cost engine** | Pricing table (Sonnet/Opus/Haiku/GPT-5 variants, input/output/cache), $/day, monthly projection |
+| 1.5 | **Menu bar UI + Settings window** | Popover (provider tiles, burn bars, reset countdowns) + minimal Settings (toggles, about) |
+| 1.6 | **Release pipeline** | DMG + PKG build, ad-hoc signing for v0, LaunchAgent template, Sparkle skeleton |
 
-**Epics: 7** · **Sub-tickets: 30**
+**Epics: 6** · **Sub-tickets: 27**
 
 ### M1 sub-tickets
 
@@ -63,146 +61,107 @@ Anything beyond these three (Gemini, Grok, Cursor, Copilot, …) is out of scope
   `Scripts/compile_and_run.sh`, `Scripts/package_app.sh`, README "Build from source" section.
   *DoD:* `./Scripts/compile_and_run.sh` builds and launches Burnbar.app from a clean clone.
 
-#### Epic 1.2: i18n foundation (3)
+#### Epic 1.2: Claude Code parser (5)
 
-- **1.2.1 String Catalog bootstrap**
-  Create `Localizable.xcstrings`, add `en` and `zh-Hans` locales, seed with `app.name = "Burnbar"`.
-  *DoD:* App reads strings via `String(localized:)`; builds with both locales.
-
-- **1.2.2 Lint rule against hardcoded strings**
-  Custom SwiftLint rule banning literal strings in `View` body except those marked `// i18n:ignore`.
-  *DoD:* Rule fires on intentional violations in test fixtures.
-
-- **1.2.3 Language picker in Settings**
-  General tab dropdown `System default | English | 简体中文`; override via `AppleLanguages` UserDefaults.
-  *DoD:* Selecting Chinese reloads UI in zh-Hans without restart.
-
-#### Epic 1.3: Claude Code parser (5)
-
-- **1.3.1 `StatsCacheReader`**
+- **1.2.1 `StatsCacheReader`**
   Decode `~/.claude/stats-cache.json` (version 3 schema) into typed model: `dailyModelTokens`, `modelUsage`.
   *DoD:* On real machine, returns ≥ 30 days of per-model token counts; tested with fixture JSON.
 
-- **1.3.2 `JSONLDeltaScanner`**
+- **1.2.2 `JSONLDeltaScanner`**
   For files in `~/.claude/projects/*/` with mtime ≥ today 00:00, stream-parse, keep `type=assistant`, extract `message.usage`.
   *DoD:* Returns sum of today's tokens by model; ignores non-assistant lines.
 
-- **1.3.3 `UsageRecord` unified model**
+- **1.2.3 `UsageRecord` unified model**
   Provider-agnostic struct: `provider`, `model`, `day`, `inputTokens`, `outputTokens`, `cacheReadTokens`, `cacheCreationTokens`, `costUSD`.
   *DoD:* Both Claude and Codex parsers emit this type.
 
-- **1.3.4 Merge stats-cache + JSONL delta**
+- **1.2.4 Merge stats-cache + JSONL delta**
   `ClaudeUsageProvider` combines cache (≤ yesterday) + today's JSONL delta; avoids double-counting if cache already includes today.
   *DoD:* Total for today matches manual sum of today's `message.usage` from JSONLs.
 
-- **1.3.5 Unit tests with fixtures**
+- **1.2.5 Unit tests with fixtures**
   Anonymized snapshot of `stats-cache.json` + 3 sample JSONL lines. Cases: empty, single-model, multi-model.
   *DoD:* `swift test` passes; fixtures under `Tests/Fixtures/Claude/`.
 
-#### Epic 1.4: Codex parser (4)
+#### Epic 1.3: Codex parser (4)
 
-- **1.4.1 SQLite read-only helper**
+- **1.3.1 SQLite read-only helper**
   GRDB or raw SQLite3 wrapper opening `state_5.sqlite` in read-only mode (`?mode=ro` URI), handles WAL.
   *DoD:* Never holds write lock; works while Codex is running.
 
-- **1.4.2 `CodexThreadsReader`**
+- **1.3.2 `CodexThreadsReader`**
   `SELECT DATE(created_at_ms/1000, 'unixepoch') day, model, SUM(tokens_used) FROM threads GROUP BY day, model`.
   *DoD:* On real machine, returns daily per-model totals matching manual SQL inspection.
 
-- **1.4.3 Map to `UsageRecord`**
+- **1.3.3 Map to `UsageRecord`**
   Translate Codex query results into `UsageRecord`. `inputTokens = tokens_used`; other token fields = nil.
   *DoD:* Total matches threads sum; nil fields documented in `UsageRecord` doc comment.
 
-- **1.4.4 Unit tests with fixture SQLite**
+- **1.3.4 Unit tests with fixture SQLite**
   Fixture `.sqlite` (committed binary) with 3 rows across 2 models, 2 days.
   *DoD:* `swift test` passes; fixture < 20 KB.
 
-#### Epic 1.5: Token cost engine (4)
+#### Epic 1.4: Token cost engine (4)
 
-- **1.5.1 `PricingTable.swift`**
+- **1.4.1 `PricingTable.swift`**
   Per-model rates for input, output, cache_read, cache_create (USD per million tokens).
   *DoD:* Covers all 5 Claude models on real machine + GPT-5 / GPT-5.5; source comment cites pricing pages with snapshot date.
 
-- **1.5.2 `CostCalculator`**
+- **1.4.2 `CostCalculator`**
   Apply pricing to `UsageRecord`. Unknown model → warn, treat as $0, surface as "Unknown model" in UI.
   *DoD:* Daily cost matches `claude-usage-tracker` (Python) output on identical input.
 
-- **1.5.3 Time-window aggregator**
+- **1.4.3 Time-window aggregator**
   Group `UsageRecord` into today / week / month buckets using user's local timezone.
   *DoD:* Bucket boundaries align with `Calendar.current`; DST transitions handled.
 
-- **1.5.4 Pricing freshness check**
+- **1.4.4 Pricing freshness check**
   Unit test fails if pricing snapshot date > 90 days old.
   *DoD:* `testPricingTableIsFresh` failure message includes "update PricingTable.swift".
 
-#### Epic 1.6: Menu bar UI + Settings window (6)
+#### Epic 1.5: Menu bar UI + Settings window (6)
 
-- **1.6.1 `NSStatusItem` setup**
+- **1.5.1 `NSStatusItem` setup**
   `MenuBarController` owns the status item; SF Symbol `flame.fill`; subscribes to refresh notifications.
   *DoD:* Status item appears on launch; updates dynamically on data refresh.
 
-- **1.6.2 Popover layout — provider tiles**
+- **1.5.2 Popover layout — provider tiles**
   `ProviderTileView`: per-provider card with today's $, today's tokens, top 3 models, last-updated timestamp.
   *DoD:* Layout matches mockup; renders correctly with 1 or 2 providers; "no data yet" state for fresh installs.
 
-- **1.6.3 Burn bar component**
+- **1.5.3 Burn bar component**
   `BurnBarView`: progress fill for 5h / weekly / monthly limit; percentage + countdown to next reset.
   *DoD:* Bars animate; reset times computed correctly (5h rolling, weekly fixed, monthly fixed).
 
-- **1.6.4 Popover quick actions**
+- **1.5.4 Popover quick actions**
   Buttons: Refresh now, Open Settings, Quit. Right-click on menu bar icon = same in context menu.
   *DoD:* All actions reachable in ≤ 1 click; Quit terminates cleanly.
 
-- **1.6.5 Settings window scaffold**
+- **1.5.5 Settings window scaffold**
   SwiftUI `Settings` scene with `TabView`: General | Providers | About. Non-modal, single instance.
   *DoD:* `⌘,` opens Settings; closing window does not quit app.
 
-- **1.6.6 Settings tabs content**
-  General: language, theme (auto/light/dark), refresh rate. Providers: enable Claude/Codex toggles. About: version, GitHub link, privacy link.
+- **1.5.6 Settings tabs content**
+  General: theme (auto/light/dark), refresh rate. Providers: enable Claude/Codex toggles. About: version, GitHub link, privacy link.
   *DoD:* Each setting persists; provider toggle disables corresponding parser.
 
-#### Epic 1.7: Release pipeline (4)
+#### Epic 1.6: Release pipeline (4)
 
-- **1.7.1 `Scripts/package_app.sh`**
+- **1.6.1 `Scripts/package_app.sh`**
   Build app bundle (Release config), ad-hoc sign (`codesign --sign -`), zip to `dist/Burnbar-vX.Y.Z.zip`.
   *DoD:* Output zip opens on a fresh Mac (right-click → Open the first time).
 
-- **1.7.2 DMG packaging**
+- **1.6.2 DMG packaging**
   Use `create-dmg` to build `Burnbar-vX.Y.Z.dmg` with drag-to-Applications layout.
   *DoD:* DMG mounts; install via drag works.
 
-- **1.7.3 LaunchAgent template**
+- **1.6.3 LaunchAgent template**
   `Scripts/install_launchagent.sh` creates `~/Library/LaunchAgents/xyz.andybowu.Burnbar.plist`; README documents enable/disable.
   *DoD:* Burnbar starts on login after install; uninstall script removes it.
 
-- **1.7.4 Sparkle skeleton (no deploy)**
+- **1.6.4 Sparkle skeleton (no deploy)**
   Add Sparkle framework, generate EdDSA keypair, write `appcast.xml` template, document key custody. Auto-update **off** in v0.
   *DoD:* Sparkle integrated but no update endpoint; deferred to a future milestone.
-
----
-
-## Milestone 1.5 — Ollama support (Phase 1.5)
-
-**Goal**: Track Ollama usage and complete the 3-provider story, despite Ollama not persisting token counts to disk.
-
-**Why separate from M1**: Ollama is fundamentally different from Claude/Codex:
-- ❌ **No persistent token storage** (verified on a real machine: no `stats-cache`, no `tokens_used` column anywhere; only `eval_count` in ephemeral API responses)
-- ❌ **No subscription cost** — `$` UI doesn't apply
-- ❌ **No 5h/weekly/monthly limits** — limit bars don't apply
-- ⚠️ **Different implementation strategy**: live log tailing + Burnbar's own SQLite for persistence
-
-Splitting Ollama out keeps M1 fast (~2 weeks) instead of dragging it to 3+ weeks while we figure out the Ollama log format.
-
-| # | Epic | One-line scope |
-|---|---|---|
-| 1.5.1 | **Ollama investigation** | Confirm exact log format with `OLLAMA_DEBUG=DEBUG`; spike on log-tail strategy |
-| 1.5.2 | **Live log tailer + parser** | Tail `~/.ollama/logs/server-*.log`, parse Go-style structured lines, extract token counts |
-| 1.5.3 | **Burnbar local DB** | SQLite at `~/Library/Application Support/Burnbar/usage.sqlite` to persist parsed Ollama usage |
-| 1.5.4 | **Ollama-specific UI mode** | Provider tile shows "calls today / tokens generated / models used" instead of $ + burn bars |
-
-**Epics: 4** · **Sub-tickets: TBD** (expanded after M1 ships and 1.5.1 investigation completes)
-
-**Definition of done**: User has Ollama installed and running. Burnbar shows today's Ollama call count, total tokens generated, and per-model breakdown — for calls made *while Burnbar was running*. Acknowledged limitation: calls made when Burnbar is off are not counted (surfaced in UI as "Tracking since: <Burnbar install date>").
 
 ---
 
@@ -319,11 +278,11 @@ Splitting Ollama out keeps M1 fast (~2 weeks) instead of dragging it to 3+ weeks
 | 3.1 | **Backend infra** | Cloudflare Workers + D1 schema (`users`, `daily_usage`), wrangler config, staging + prod |
 | 3.2 | **GitHub OAuth Device Flow** | Menu bar app device-flow login, Keychain token storage (our service id), revoke flow |
 | 3.3 | **Upload pipeline** | Daily aggregation upload (opted-in users only), retry/backoff, opt-out toggle, never upload prompt content |
-| 3.4 | **Web leaderboard UI** | `burnbar.andybowu.xyz`: landing + daily/weekly/monthly rankings + individual profile, bilingual EN/ZH |
+| 3.4 | **Web leaderboard UI** | `burnbar.andybowu.xyz`: landing + daily/weekly/monthly rankings + individual profile |
 | 3.5 | **Privacy controls** | Hide-from-leaderboard, delete-all-my-data flow, retention policy, public privacy page |
 | 3.6 | **Domain + DNS** | Configure `burnbar.andybowu.xyz` CNAME, TLS, Worker routes |
 
-**Epics: 6** · **Sub-tickets: 28**
+**Epics: 6** · **Sub-tickets: 27**
 
 ### M3 sub-tickets
 
@@ -393,15 +352,15 @@ Splitting Ollama out keeps M1 fast (~2 weeks) instead of dragging it to 3+ weeks
   Persist unsent uploads to disk; on next online (NWPathMonitor), drain queue.
   *DoD:* Cut network mid-upload → recovers on reconnect; no duplicates.
 
-#### Epic 3.4: Web leaderboard UI (6)
+#### Epic 3.4: Web leaderboard UI (5)
 
 - **3.4.1 Web stack & deploy**
-  Next.js (App Router) + Tailwind on Cloudflare Pages. Bilingual via `next-intl`.
+  Next.js (App Router) + Tailwind on Cloudflare Pages.
   *DoD:* `pnpm dev` runs; `wrangler pages deploy` ships staging.
 
 - **3.4.2 Landing page**
   Hero, "How it works", privacy promise, download button.
-  *DoD:* Lighthouse ≥ 90 on perf/a11y; bilingual toggle in header.
+  *DoD:* Lighthouse ≥ 90 on perf/a11y.
 
 - **3.4.3 Leaderboard pages**
   `/leaderboard/daily`, `/weekly`, `/monthly`. Paginated, sortable, refresh every 5 min.
@@ -411,11 +370,7 @@ Splitting Ollama out keeps M1 fast (~2 weeks) instead of dragging it to 3+ weeks
   `/u/<github_login>`: avatar, login, 90-day burn line chart, per-provider breakdown.
   *DoD:* Hidden / opted-out users return 404 with no historical leak.
 
-- **3.4.5 i18n on web**
-  Same `en` + `zh-Hans` keys; locale switcher in header; route prefix `/zh/...`.
-  *DoD:* `/zh/leaderboard/daily` shows zh-Hans; English fallback for missing keys.
-
-- **3.4.6 OG cards + SEO**
+- **3.4.5 OG cards + SEO**
   Per-page OG image, Twitter card, sitemap.xml, robots.txt.
   *DoD:* Share URL on X → preview image renders with current top-3.
 
@@ -434,7 +389,7 @@ Splitting Ollama out keeps M1 fast (~2 weeks) instead of dragging it to 3+ weeks
   *DoD:* Cron logs purge counts; manual delete is immediate.
 
 - **3.5.4 Privacy policy page**
-  `/privacy` (bilingual): what we collect, what we don't, retention, opt-out, contact.
+  `/privacy`: what we collect, what we don't, retention, opt-out, contact.
   *DoD:* Linked from app Settings + web footer; reviewed against actual code.
 
 #### Epic 3.6: Domain + DNS (3)
@@ -457,24 +412,23 @@ Splitting Ollama out keeps M1 fast (~2 weeks) instead of dragging it to 3+ weeks
 
 | Milestone | Epics | Sub-tickets | Est. duration |
 |---|---|---|---|
-| 1 — Local Swift App (Claude + Codex) | 7 | 30 | 1–2 weeks |
-| 1.5 — Ollama support | 4 | TBD | ~1 week (after M1) |
+| 1 — Local Swift App (Claude + Codex) | 6 | 27 | 1–2 weeks |
 | 2 — Cross-Device Aggregation | 5 | 18 | 1 week |
-| 3 — Global Leaderboard | 6 | 28 | 2–3 weeks |
-| **Total** | **22** | **~76** | **5–7 weeks** |
+| 3 — Global Leaderboard | 6 | 27 | 2–3 weeks |
+| **Total** | **17** | **~72** | **4–6 weeks** |
 
 ---
 
 ## Decisions log
 
-- ✅ **Product form factor**: Hybrid (Menu Bar + Settings window). Folded into Epic 1.6.
-- ✅ **Provider scope**: 3 providers exactly — Claude, Codex, Ollama. No more.
-- ✅ **Provider sequencing**: M1 = Claude + Codex (clean data). M1.5 = Ollama (different strategy — no persistent token storage; needs live log tail + own DB; different UI mode).
-- ✅ **Gemini / Grok / Cursor**: out of scope (conflict with privacy thesis or are pass-through).
-- ✅ **Milestone structure**: 4 milestones, M1.5 inserted to separate Ollama work from M1 timing.
-- ✅ **M1 dependency order**: scaffold → i18n → parsers → cost → UI → release.
+- ✅ **Product form factor**: Hybrid (Menu Bar + Settings window). Folded into Epic 1.5.
+- ✅ **Provider scope**: 2 providers exactly — Claude Code + OpenAI Codex. No more.
+- ✅ **Gemini / Grok / Cursor / Ollama**: out of scope (conflict with privacy thesis, are pass-through, or don't persist token counts).
+- ✅ **Milestone structure**: 3 milestones.
+- ✅ **M1 dependency order**: scaffold → parsers → cost → UI → release.
 - ✅ **M3 backend**: Cloudflare Workers + D1.
-- ✅ **Sparkle**: skeleton only in Epic 1.7 (no Apple Developer cert yet).
+- ✅ **Sparkle**: skeleton only in Epic 1.6 (no Apple Developer cert yet).
+- ✅ **i18n**: English-only for MVP. No String Catalog. Not on the roadmap.
 
 ## Open questions
 
