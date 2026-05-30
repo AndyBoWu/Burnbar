@@ -91,6 +91,64 @@ describe('GET /api/v1/leaderboard/:period', () => {
   })
 })
 
+describe('GET /api/v1/u/:login', () => {
+  it('returns the public profile + 90-day history for an opted-in, non-hidden user (200)', async () => {
+    const { app, env, authed } = setup()
+    // Two daily rows across both providers on the same day -> summed per date.
+    await app.request('/api/v1/usage', { method: 'POST', headers: authed(), body: JSON.stringify({ ...validBody, tokens: 1000, cost_usd: 1.5 }) }, env)
+    await app.request('/api/v1/usage', { method: 'POST', headers: authed(), body: JSON.stringify({ ...validBody, provider: 'codex', tokens: 500, cost_usd: 0.5 }) }, env)
+    const res = await app.request('/api/v1/u/octocat', {}, env)
+    expect(res.status).toBe(200)
+    const body = (await res.json()) as { github_login: string; history: { date: string; tokens: number; cost_usd: number }[] }
+    expect(body.github_login).toBe('octocat')
+    expect(body.history).toHaveLength(1)
+    expect(body.history[0]).toEqual({ date: '2026-05-30', tokens: 1500, cost_usd: 2 })
+  })
+
+  it('matches the login case-insensitively (200)', async () => {
+    const { app, env, authed } = setup()
+    await app.request('/api/v1/usage', { method: 'POST', headers: authed(), body: JSON.stringify(validBody) }, env)
+    const res = await app.request('/api/v1/u/OCTOCAT', {}, env)
+    expect(res.status).toBe(200)
+    expect(((await res.json()) as { github_login: string }).github_login).toBe('octocat')
+  })
+
+  it('never exposes provider, machine, project, or model fields (privacy)', async () => {
+    const { app, env, authed } = setup()
+    await app.request('/api/v1/usage', { method: 'POST', headers: authed(), body: JSON.stringify(validBody) }, env)
+    const body = (await (await app.request('/api/v1/u/octocat', {}, env)).json()) as Record<string, unknown>
+    expect(Object.keys(body).sort()).toEqual(['github_login', 'history'])
+    const point = (body.history as Record<string, unknown>[])[0]
+    expect(Object.keys(point).sort()).toEqual(['cost_usd', 'date', 'tokens'])
+  })
+
+  it('returns 404 for a hidden user with no history leaked (DoD)', async () => {
+    const { app, env, raw, authed } = setup()
+    await app.request('/api/v1/usage', { method: 'POST', headers: authed(), body: JSON.stringify(validBody) }, env)
+    raw.prepare('UPDATE users SET hidden = 1 WHERE github_id = 1').run()
+    const res = await app.request('/api/v1/u/octocat', {}, env)
+    expect(res.status).toBe(404)
+    const body = (await res.json()) as Record<string, unknown>
+    expect(body).not.toHaveProperty('history')
+    expect(body).not.toHaveProperty('github_login')
+  })
+
+  it('returns 404 for an opted-out user with no history leaked (DoD)', async () => {
+    const { app, env, raw, authed } = setup()
+    await app.request('/api/v1/usage', { method: 'POST', headers: authed(), body: JSON.stringify(validBody) }, env)
+    raw.prepare('UPDATE users SET opted_in = 0 WHERE github_id = 1').run()
+    const res = await app.request('/api/v1/u/octocat', {}, env)
+    expect(res.status).toBe(404)
+    expect((await res.json()) as Record<string, unknown>).not.toHaveProperty('history')
+  })
+
+  it('returns 404 for an unknown login', async () => {
+    const { app, env } = setup()
+    const res = await app.request('/api/v1/u/ghost', {}, env)
+    expect(res.status).toBe(404)
+  })
+})
+
 describe('GET /api/v1/me', () => {
   it('returns the user + history (200)', async () => {
     const { app, env, authed } = setup()

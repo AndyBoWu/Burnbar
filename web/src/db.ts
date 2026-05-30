@@ -94,6 +94,55 @@ export async function getMe(db: D1Database, githubId: number): Promise<MeRespons
   }
 }
 
+/** Days of per-user public-profile history exposed at `/api/v1/u/:login`. */
+export const PROFILE_HISTORY_DAYS = 90
+
+export interface ProfilePoint {
+  date: string
+  tokens: number
+  cost_usd: number
+}
+
+export interface PublicProfile {
+  github_login: string
+  history: ProfilePoint[]
+}
+
+/** Inclusive `YYYY-MM-DD` start of the public-profile window (89 days back + today = 90 days). */
+export function profileWindowStart(now: Date): string {
+  const start = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() - (PROFILE_HISTORY_DAYS - 1)))
+  return start.toISOString().slice(0, 10)
+}
+
+/**
+ * Public profile for `/api/v1/u/:login` (3.4.4). Returns the user's last-90-days
+ * daily burn series ONLY when the user is opted_in AND not hidden; otherwise
+ * `null` so the caller returns a 404 with no historical data leaked.
+ *
+ * The lookup is by `github_login` (case-insensitive). Per-day tokens/cost are
+ * summed across providers so the public series carries no provider/model/path
+ * detail — only the leaderboard-safe `{date, tokens, cost_usd}` shape.
+ */
+export async function publicProfile(db: D1Database, login: string, now: Date): Promise<PublicProfile | null> {
+  const user = await db
+    .prepare('SELECT github_id, github_login, opted_in, hidden FROM users WHERE github_login = ? COLLATE NOCASE')
+    .bind(login)
+    .first<{ github_id: number; github_login: string; opted_in: number; hidden: number }>()
+  // Privacy gate: unknown, opted-out, or hidden users expose nothing (404 upstream).
+  if (!user || user.opted_in !== 1 || user.hidden !== 0) return null
+  const history = await db
+    .prepare(
+      `SELECT date AS date, SUM(tokens) AS tokens, SUM(cost_usd) AS cost_usd
+       FROM daily_usage
+       WHERE github_id = ? AND date >= ?
+       GROUP BY date
+       ORDER BY date ASC`,
+    )
+    .bind(user.github_id, profileWindowStart(now))
+    .all<ProfilePoint>()
+  return { github_login: user.github_login, history: history.results }
+}
+
 export interface UserFlags {
   hidden?: boolean
   opted_in?: boolean
