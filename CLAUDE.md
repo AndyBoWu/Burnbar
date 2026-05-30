@@ -4,9 +4,11 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Current state
 
-**M1.1.1 landed — scaffold builds & tests green.** XcodeGen-generated 3-target project: `BurnbarCore` (framework — all testable logic), `Burnbar` (thin SwiftUI app), `BurnbarCoreTests` (host-free unit tests). The app runs as an `LSUIElement` menu-bar agent showing a placeholder `flame.fill` popover. Next concrete units in order: 1.1.2 (SwiftLint/SwiftFormat), 1.1.3 (GitHub Actions CI), 1.1.4 (build scripts), then the parsers (Epics 1.2 / 1.3).
+**M1 + M2 complete; M3 code-complete (84/90 issues closed).** The macOS app (`Sources/Burnbar` + `BurnbarCore`) does local Claude/Codex tracking, menu-bar cost, Settings, packaging (zip/DMG/LaunchAgent), cross-device iCloud sync (M2), and the M3 leaderboard client (GitHub device-flow auth, Keychain, upload pipeline). The leaderboard backend is in `web/` (Cloudflare Workers + D1 + Hono, vitest) and the site in `web/site/` (Next.js + Tailwind) — both build + test offline.
 
-`Burnbar.xcodeproj` is **generated from `project.yml` and git-ignored** — run `xcodegen generate` after cloning (or after editing `project.yml`). When sub-tickets ship and tooling lands, update this file's "Commands" section in the same PR.
+`Burnbar.xcodeproj` is generated from `project.yml` and git-ignored — run `xcodegen generate` after cloning. The web subsystems install per-dir (`cd web && npm install`; `cd web/site && pnpm install`).
+
+**The 6 remaining open issues need operator/external actions only** (register the GitHub App #52, DNS CNAME #71, public Homebrew tap + GitHub Release #28, and their epics #79/#86/#90) — see [docs/M3-OPERATOR-SETUP.md](docs/M3-OPERATOR-SETUP.md). When sub-tickets ship and tooling lands, update this file's "Commands" section in the same PR.
 
 ## Source of truth
 
@@ -68,6 +70,6 @@ Pre-commit is optional: `brew install lefthook && lefthook install` wires `lefth
 
 _Planned (each lands with its sub-ticket; update this section in the same PR):_
 
-- `./Scripts/update_cask.sh` — bump Homebrew tap cask version + sha256 after a release (1.6.5)
+- `./Scripts/update_cask.sh <version> <tap-dir>` — bump the Homebrew cask version + sha256 after a release (1.6.5). Cask template: `Scripts/homebrew/burnbar.rb` (copy into the public `andybowu/homebrew-tap`).
 
 Update this section in the same PR that introduces each script.
