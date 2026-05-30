@@ -136,8 +136,8 @@ private struct ProvidersSettingsView: View {
 
 // MARK: - Devices
 
-/// This Mac's identity row (2.1.3): the opaque `machine_id`, an editable label,
-/// and a "Last synced" placeholder.
+/// This Mac's identity row (2.1.3 / 2.5.2): the opaque `machine_id`, an editable
+/// label, the live "Last sync …" status, and a stale-sync warning.
 ///
 /// - **Machine id** comes from `MachineIdentity.current` — a stable, truncated
 ///   `SHA-256` digest (16 hex chars). Shown read-only and monospaced.
@@ -145,8 +145,17 @@ private struct ProvidersSettingsView: View {
 ///   draft and commits to `rename(to:)` on each change, so the override persists
 ///   to `UserDefaults` and survives relaunch. The placeholder shows the system
 ///   computer name (the store's default), so clearing the field reverts to it.
-/// - **Last synced** is a placeholder ("Never") rendered by
-///   `LastSyncedDisplay`; Epic 2.2's WriteController feeds it real timestamps.
+/// - **Last sync** shows the live relative time of this Mac's last successful
+///   iCloud rollup write (`SyncWriteSchedule.lastWriteAtKey`, written by 2.2.4),
+///   rendered by `LastSyncedDisplay` via the `SyncHealth` verdict.
+/// - **Warning row** (2.5.2) appears only when `SyncHealth` is `.stale` — the
+///   last write is older than 30 minutes or iCloud Drive is unavailable — and
+///   clears automatically on the next successful resync.
+///
+/// The verdict lives in the `SyncHealthMonitor` view-model (`@Published`), which
+/// recomputes on appear, on `.burnbarSettingsDidChange` (the same signal the
+/// write scheduler/Settings already broadcast), and on a coarse poll so the
+/// relative text and warning stay current without a restart.
 ///
 /// Single-machine scope per #31 — the full multi-machine table is 2.4.4. The
 /// store is constructed once on `.standard` defaults; English-only literals
@@ -162,6 +171,10 @@ private struct DevicesSettingsView: View {
     /// The text being edited, seeded from the persisted label. Kept in `@State`
     /// so the field reflects edits immediately; committed to the store on change.
     @State private var draftLabel = MachineLabel().label
+
+    /// Live sync-freshness verdict, recomputed from the real `last-write-at`
+    /// timestamp + iCloud availability (2.5.2).
+    @StateObject private var monitor = SyncHealthMonitor()
 
     var body: some View {
         Form {
@@ -184,9 +197,16 @@ private struct DevicesSettingsView: View {
                         .textSelection(.enabled)
                 }
 
-                LabeledContent("Last synced") {
-                    Text(LastSyncedDisplay.text(for: nil))
+                LabeledContent("Last sync") {
+                    Text(monitor.health.statusLabel)
                         .foregroundStyle(.secondary)
+                }
+
+                if let warning = monitor.health.warningLabel {
+                    Label(warning, systemImage: "exclamationmark.triangle.fill")
+                        .font(.callout)
+                        .foregroundStyle(.orange)
+                        .labelStyle(.titleAndIcon)
                 }
             } header: {
                 Text("This Mac")
@@ -203,6 +223,99 @@ private struct DevicesSettingsView: View {
         // `MachineLabel.rename`).
         .onChange(of: draftLabel) { _, newValue in
             labelStore.rename(to: newValue)
+        }
+        .onAppear { monitor.start() }
+        .onDisappear { monitor.stop() }
+    }
+}
+
+/// Live, observable source of this Mac's ``SyncHealth`` for the Devices tab
+/// (2.5.2).
+///
+/// Reads the `last-write-at` timestamp the write scheduler (2.2.4) persists under
+/// `SyncWriteSchedule.lastWriteAtKey` and resolves whether iCloud Drive is
+/// currently reachable, then publishes the pure ``SyncHealth`` verdict so the
+/// SwiftUI row updates without a restart. The threshold + warning copy live in
+/// `BurnbarCore`; this object only handles the (main-actor) recompute triggers:
+/// on `start()`, on `.burnbarSettingsDidChange` (broadcast after Settings
+/// changes and write attempts), and on a coarse 60-second poll so the relative
+/// "N minutes ago" text and the warning stay current.
+///
+/// iCloud resolution can block, so it runs off the main thread; the published
+/// update hops back to the main actor.
+@MainActor
+private final class SyncHealthMonitor: ObservableObject {
+    /// The latest verdict. `@Published` so the view re-renders on every change.
+    @Published private(set) var health: SyncHealth
+
+    /// Reads the `last-write-at` slot the scheduler writes.
+    private let store = UserDefaultsLastWriteStore()
+    /// Resolves the iCloud `Burnbar/` directory to learn availability.
+    private let container = ICloudContainer()
+    private var timer: Timer?
+    private var observer: NSObjectProtocol?
+
+    /// Coarse poll so the relative text advances and the warning appears once the
+    /// 30-minute threshold elapses, even with no other trigger.
+    private static let pollInterval: TimeInterval = 60
+
+    init() {
+        // Seed assuming iCloud is reachable; the first off-main resolve corrects
+        // it. Keeps the row populated immediately without blocking the main
+        // thread on construction.
+        health = SyncHealth.evaluate(
+            lastWriteAt: store.lastWriteAt(),
+            iCloudAvailable: true
+        )
+    }
+
+    /// Begin observing: install the poll timer + the settings-changed observer
+    /// and refresh once immediately.
+    func start() {
+        guard timer == nil else { return }
+        let timer = Timer.scheduledTimer(withTimeInterval: Self.pollInterval, repeats: true) { [weak self] _ in
+            MainActor.assumeIsolated { self?.refresh() }
+        }
+        RunLoop.main.add(timer, forMode: .common)
+        self.timer = timer
+
+        observer = NotificationCenter.default.addObserver(
+            forName: .burnbarSettingsDidChange,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            MainActor.assumeIsolated { self?.refresh() }
+        }
+
+        refresh()
+    }
+
+    /// Tear down the timer + observer when the tab disappears. Paired with
+    /// `start()` from the view's `.onAppear`/`.onDisappear`, this is the sole
+    /// teardown path: a `nonisolated deinit` cannot touch these `@MainActor`,
+    /// non-`Sendable` members under Swift 6 strict concurrency.
+    func stop() {
+        timer?.invalidate()
+        timer = nil
+        if let observer {
+            NotificationCenter.default.removeObserver(observer)
+            self.observer = nil
+        }
+    }
+
+    /// Resolve iCloud availability off the main thread, then publish a fresh
+    /// verdict on the main actor.
+    private func refresh() {
+        let lastWriteAt = store.lastWriteAt()
+        let container = container
+        Task { [weak self] in
+            let available = await Task.detached { container.resolve().isAvailable }.value
+            await MainActor.run {
+                self?.health = SyncHealth.evaluate(
+                    lastWriteAt: lastWriteAt,
+                    iCloudAvailable: available
+                )
+            }
         }
     }
 }
