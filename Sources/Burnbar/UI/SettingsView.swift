@@ -181,6 +181,10 @@ private struct DevicesSettingsView: View {
     /// burn off the main actor, owns rename/hide/forget (2.4.4).
     @State private var fleet = DevicesViewModel()
 
+    /// Drives the leaderboard "Sign in with GitHub" device flow (3.2.2). Owns the
+    /// published sign-in state the account section below binds to.
+    @State private var auth = AuthController()
+
     var body: some View {
         Form {
             Section {
@@ -222,6 +226,8 @@ private struct DevicesSettingsView: View {
             }
 
             DevicesTableSection(fleet: fleet)
+
+            LeaderboardAccountSection(auth: auth)
         }
         .formStyle(.grouped)
         // Persist every keystroke through the store so the override survives
@@ -537,6 +543,107 @@ private final class SyncHealthMonitor: ObservableObject {
                     iCloudAvailable: available
                 )
             }
+        }
+    }
+}
+
+// MARK: - Leaderboard account (3.2.2)
+
+/// The leaderboard "Sign in with GitHub" section of the Devices tab.
+///
+/// Tapping "Sign in with GitHub" kicks off GitHub's device flow via
+/// `AuthController`: it requests a device code, surfaces the short user code in a
+/// large, monospaced, **copyable** label, auto-opens the verification page in the
+/// user's default browser, and shows the verification URL as fallback text. While
+/// awaiting authorization it polls; on success it stores the token in the Keychain
+/// and flips to a signed-in row with a "Sign out" action. Errors surface as a
+/// plain-English message with a "Try again" affordance.
+///
+/// No embedded web view — authorization happens in the system browser, so no
+/// cookies or third-party Keychain items are read (privacy thesis, CLAUDE.md M3).
+/// English-only literals throughout.
+private struct LeaderboardAccountSection: View {
+    @Bindable var auth: AuthController
+
+    var body: some View {
+        Section {
+            switch auth.state {
+            case .signedOut:
+                signedOutRow
+
+            case .requestingCode:
+                HStack(spacing: 8) {
+                    ProgressView().controlSize(.small)
+                    Text("Contacting GitHub…")
+                        .foregroundStyle(.secondary)
+                }
+
+            case let .awaitingAuthorization(userCode, verificationURI):
+                awaitingRow(userCode: userCode, verificationURI: verificationURI)
+
+            case .signedIn:
+                signedInRow
+
+            case let .failed(message):
+                failedRow(message: message)
+            }
+        } header: {
+            Text("Leaderboard")
+        } footer: {
+            Text(
+                "Sign in to publish your daily totals to the public leaderboard. Only the date, provider, "
+                    + "and aggregate token + cost totals are uploaded — never your prompts, projects, or paths."
+            )
+            .font(.caption)
+            .foregroundStyle(.secondary)
+        }
+    }
+
+    private var signedOutRow: some View {
+        Button("Sign in with GitHub") { auth.signIn() }
+    }
+
+    private func awaitingRow(userCode: String, verificationURI: String) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("Enter this code at GitHub to finish signing in:")
+                .font(.callout)
+                .foregroundStyle(.secondary)
+
+            HStack(spacing: 12) {
+                Text(userCode)
+                    .font(.system(.title, design: .monospaced).weight(.semibold))
+                    .textSelection(.enabled)
+                Button("Copy code") { auth.copyUserCode() }
+            }
+
+            // Fallback in case the browser didn't open automatically.
+            HStack(spacing: 4) {
+                Text("If your browser didn't open,")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                Button("open \(verificationURI)") { auth.openVerificationURL() }
+                    .buttonStyle(.link)
+                    .font(.caption)
+            }
+        }
+    }
+
+    private var signedInRow: some View {
+        HStack {
+            Label("Signed in to GitHub", systemImage: "checkmark.circle.fill")
+                .foregroundStyle(.green)
+            Spacer()
+            Button("Sign out") { auth.signOut() }
+        }
+    }
+
+    private func failedRow(message: String) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Label(message, systemImage: "exclamationmark.triangle.fill")
+                .font(.callout)
+                .foregroundStyle(.orange)
+                .labelStyle(.titleAndIcon)
+            Button("Try again") { auth.signIn() }
         }
     }
 }
