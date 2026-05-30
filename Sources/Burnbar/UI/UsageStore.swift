@@ -37,6 +37,14 @@ final class UsageStore {
     /// Non-fatal load problems (per-provider, or the iCloud read), surfaced in the UI.
     private(set) var warnings: [String] = []
 
+    /// Number of machines contributing to the current combined view (2.4.2). Set
+    /// from the reconciled data during the All-Macs load — `ReconciledUsage.byMachine.count`,
+    /// i.e. exactly the machines whose records were summed into the displayed total,
+    /// so the "N Macs syncing" badge never disagrees with the summed burn. Always
+    /// `0` in This-Mac mode (the badge is hidden there), so it reads as "this
+    /// machine's local view contributes no cross-device machines".
+    private(set) var machineCount = 0
+
     /// Whether the popover shows this machine only or every machine combined
     /// (2.4.1). Initialized from `UserDefaults`; assigning a new value persists
     /// the choice and reloads from the matching data source in place, so the
@@ -109,6 +117,7 @@ final class UsageStore {
             week = snapshot.week
             month = snapshot.month
             warnings = snapshot.warnings
+            machineCount = snapshot.machineCount
             lastUpdated = Date()
             isLoading = false
             NotificationCenter.default.post(name: .burnbarDidRefresh, object: nil)
@@ -120,14 +129,21 @@ final class UsageStore {
         var week: WindowAggregate?
         var month: WindowAggregate?
         var warnings: [String]
+        /// Machines contributing to this snapshot (2.4.2). `0` for the local path
+        /// (no cross-device fan-out); the count of reconciled machines for All Macs.
+        var machineCount = 0
     }
 
     /// Collapse priced records into the three windows. Shared tail of both load
     /// paths: one aggregation pass produces today/week/month for the tiles and the
     /// weekly/monthly burn bars (1.5.3).
+    ///
+    /// `machineCount` is carried through verbatim — the local path passes `0`, the
+    /// All-Macs path passes the number of reconciled machines for the badge (2.4.2).
     private nonisolated static func snapshot(
         from records: [UsageRecord],
         warnings: [String],
+        machineCount: Int,
         calculator: CostCalculator,
         aggregator: TimeWindowAggregator
     ) -> Snapshot {
@@ -137,7 +153,8 @@ final class UsageStore {
             today: windows[.today],
             week: windows[.week],
             month: windows[.month],
-            warnings: warnings
+            warnings: warnings,
+            machineCount: machineCount
         )
     }
 
@@ -173,7 +190,14 @@ final class UsageStore {
             }
         }
 
-        return snapshot(from: records, warnings: warnings, calculator: calculator, aggregator: aggregator)
+        // Local view: this machine only, so no cross-device machine count to badge.
+        return snapshot(
+            from: records,
+            warnings: warnings,
+            machineCount: 0,
+            calculator: calculator,
+            aggregator: aggregator
+        )
     }
 
     /// **All Macs** path. Runs off the main actor (nonisolated): resolving the
@@ -198,11 +222,20 @@ final class UsageStore {
             } else {
                 "iCloud is unavailable."
             }
-            return Snapshot(today: nil, week: nil, month: nil, warnings: ["All Macs: \(reason)"])
+            return Snapshot(today: nil, week: nil, month: nil, warnings: ["All Macs: \(reason)"], machineCount: 0)
         }
 
         let byMachine = MultiMachineReader(directory: directory).readAll()
         let reconciled = reconciler.merge(byMachine)
-        return snapshot(from: reconciled.combined, warnings: [], calculator: calculator, aggregator: aggregator)
+        // The badge count (2.4.2) is the number of machines whose records were
+        // reconciled into `combined` — `byMachine` is passed through verbatim, so
+        // its `count` is exactly the machines summed into the displayed total.
+        return snapshot(
+            from: reconciled.combined,
+            warnings: [],
+            machineCount: reconciled.byMachine.count,
+            calculator: calculator,
+            aggregator: aggregator
+        )
     }
 }
