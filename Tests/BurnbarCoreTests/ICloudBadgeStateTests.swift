@@ -30,7 +30,7 @@ final class ICloudBadgeStateTests: XCTestCase {
         let resolutions: [ICloudLocation] = [
             .container(dir), // enabled
             .unavailable(reason: "iCloud Drive disabled"), // user turns it off
-            .fallback(dir), // user turns it back on
+            .fallback(dir) // user turns it back on
         ]
         let states = resolutions.map { ICloudBadgeState(location: $0) }
         XCTAssertEqual(states, [.ok, .warning, .ok])
