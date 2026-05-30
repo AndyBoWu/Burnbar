@@ -75,6 +75,21 @@ Disable it anytime:
 
 This only ever writes `~/Library/LaunchAgents/xyz.andybowu.Burnbar.plist` (our own bundle id) — never a system-wide or third-party agent.
 
+## Contributing
+
+Contributions are welcome. Install the developer tooling and the pre-commit hook
+before your first commit:
+
+```bash
+brew install swiftlint swiftformat gitleaks lefthook
+make setup
+```
+
+`make setup` wires a pre-commit hook that runs `make lint` (style) and a gitleaks
+secret scan, blocking any commit with style violations or leaked credentials. See
+[CONTRIBUTING.md](CONTRIBUTING.md) for full setup and [SECURITY.md](SECURITY.md)
+for how to report vulnerabilities.
+
 ## License
 
 MIT © Andy Wu

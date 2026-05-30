@@ -48,7 +48,7 @@ Leaderboard upload (M3) aggregates *across* machines first (via the M2 reconcile
 
 - **One sub-ticket = one PR.** Sub-tickets in PLAN.md are sized to half-day to one-day. If a change would touch >3 files or cross epic boundaries, stop and decompose first.
 - **Check open PRs before starting an epic/sub-ticket.** Coverage may already exist on another branch (per the user's global CLAUDE.md rule).
-- **Pre-commit hooks aren't guaranteed installed.** If/when a `Makefile` lands with `make pre-commit-run` or equivalent, run it manually before commits and handoffs — don't rely on git hooks being wired up in cloud/agent environments.
+- **Install the pre-commit hook with `make setup`.** It wires `make lint` (style) **and** a gitleaks staged-secret scan into every commit. `make setup` handles the case where a custom global `core.hooksPath` would otherwise neutralize `lefthook install`. The hook isn't guaranteed present in cloud/agent environments and is bypassable with `git commit --no-verify` — so it's a fast local guardrail, not a hard gate. Run `make lint` (and `make scan-secrets`) manually when the hook is absent; the server-side backstop is GitHub Push Protection once the repo is public.
 - **Pricing freshness.** When editing `PricingTable.swift`, update the snapshot date comment. Epic 1.4.4 adds a test that fails if the table is >90 days stale.
 - **Fixtures must be anonymized.** Test fixtures under `Tests/Fixtures/{Claude,Codex}/` are committed — strip any real prompts, project paths, or user identifiers before committing.
 
@@ -60,6 +60,7 @@ Leaderboard upload (M3) aggregates *across* machines first (via the M2 reconcile
 - `xcodebuild -project Burnbar.xcodeproj -scheme Burnbar -destination 'platform=macOS' build` — build the app (add `CODE_SIGNING_ALLOWED=NO` for unsigned local builds).
 - `xcodebuild -project Burnbar.xcodeproj -scheme Burnbar -destination 'platform=macOS' test` — run `BurnbarCoreTests`.
 - `./Scripts/compile_and_run.sh` — regenerate the project, build Debug, and launch Burnbar.app from a clean clone (1.1.4).
+- `make setup` — install the pre-commit hook (lint + gitleaks secret scan) via lefthook. Run once per clone. Requires `brew install lefthook gitleaks` (and `swiftlint swiftformat` for lint). Handles a custom global `core.hooksPath`.
 - `make lint` — SwiftFormat (`--lint`) + SwiftLint (`--strict`); non-zero exit on any violation (1.1.2). Requires `brew install swiftlint swiftformat`.
 - `make format` — auto-apply SwiftFormat + `swiftlint --fix` in place (1.1.2).
 - `./Scripts/package_app.sh` — Release build → ad-hoc sign → `dist/Burnbar-vX.Y.Z.zip` (prints sha256) (1.6.1). v0 ad-hoc only (no hardened runtime); right-click → Open on first launch.
