@@ -42,7 +42,7 @@ Vibe coding with Claude Code or Codex? You're burning tokens — but you can't s
 
 ## Build from source
 
-Prerequisites: **macOS 14+**, **Xcode 15+**, and [XcodeGen](https://github.com/yonsm/XcodeGen) (`brew install xcodegen`) — the `.xcodeproj` is generated from `project.yml`, not committed.
+Prerequisites: **macOS 14+**, **Xcode 15+**, and [XcodeGen](https://github.com/yonaskolb/XcodeGen) (`brew install xcodegen`) — the `.xcodeproj` is generated from `project.yml`, not committed.
 
 ```bash
 git clone https://github.com/AndyBoWu/Burnbar.git
