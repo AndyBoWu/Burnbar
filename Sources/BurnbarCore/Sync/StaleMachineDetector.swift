@@ -45,7 +45,7 @@ public struct StaleMachineDetector: Sendable {
     /// The cutoff instant: activity at or after this is fresh, strictly before it is
     /// stale. Exactly `staleThresholdDays` before `now`.
     private static func cutoff(now: Date) -> Date {
-        now.addingTimeInterval(-Double(staleThresholdDays) * 86_400)
+        now.addingTimeInterval(-Double(staleThresholdDays) * 86400)
     }
 
     /// Whether a machine whose most-recent activity was at `lastActivity` is stale

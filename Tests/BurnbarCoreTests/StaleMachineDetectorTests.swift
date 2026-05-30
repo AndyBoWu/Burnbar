@@ -15,7 +15,7 @@ final class StaleMachineDetectorTests: XCTestCase {
 
     /// `now` shifted back by `days` whole days.
     private func daysAgo(_ days: Int) -> Date {
-        now.addingTimeInterval(-Double(days) * 86_400)
+        now.addingTimeInterval(-Double(days) * 86400)
     }
 
     private func freshDefaults() -> UserDefaults {
