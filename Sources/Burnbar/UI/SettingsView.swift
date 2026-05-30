@@ -47,6 +47,8 @@ struct SettingsView: View {
             ProvidersSettingsView()
         case .devices:
             DevicesSettingsView()
+        case .leaderboard:
+            LeaderboardSettingsView()
         case .about:
             AboutSettingsView()
         }

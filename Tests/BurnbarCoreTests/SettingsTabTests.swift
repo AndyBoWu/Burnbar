@@ -7,16 +7,19 @@ import XCTest
 /// The view renders one tab per `SettingsTab` case, so these guard the exact
 /// set, order, English labels, and SF Symbol names the UI depends on.
 final class SettingsTabTests: XCTestCase {
-    /// Exactly four tabs, in display order: General, Providers, Devices, About.
-    func testFourTabsInOrder() {
-        XCTAssertEqual(SettingsTab.allCases, [.general, .providers, .devices, .about])
+    /// Exactly five tabs, in display order: General, Providers, Devices,
+    /// Leaderboard, About (Leaderboard added in 3.3.4).
+    func testFiveTabsInOrder() {
+        XCTAssertEqual(SettingsTab.allCases, [.general, .providers, .devices, .leaderboard, .about])
     }
 
-    /// English titles match the General | Providers | Devices | About spec.
+    /// English titles match the General | Providers | Devices | Leaderboard |
+    /// About spec.
     func testTitles() {
         XCTAssertEqual(SettingsTab.general.title, "General")
         XCTAssertEqual(SettingsTab.providers.title, "Providers")
         XCTAssertEqual(SettingsTab.devices.title, "Devices")
+        XCTAssertEqual(SettingsTab.leaderboard.title, "Leaderboard")
         XCTAssertEqual(SettingsTab.about.title, "About")
     }
 
@@ -35,9 +38,11 @@ final class SettingsTabTests: XCTestCase {
     }
 
     /// Raw values are the stable storage/deep-link tokens — guard the Devices
-    /// case against an accidental rename that would break persisted selection.
-    func testDevicesRawValueIsStable() {
+    /// and Leaderboard cases against an accidental rename that would break
+    /// persisted selection.
+    func testStableRawValues() {
         XCTAssertEqual(SettingsTab.devices.rawValue, "devices")
+        XCTAssertEqual(SettingsTab.leaderboard.rawValue, "leaderboard")
     }
 
     /// The About version label tracks `BurnbarCore.version`.
