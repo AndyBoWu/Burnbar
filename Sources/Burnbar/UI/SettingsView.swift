@@ -157,9 +157,10 @@ private struct ProvidersSettingsView: View {
 /// write scheduler/Settings already broadcast), and on a coarse poll so the
 /// relative text and warning stay current without a restart.
 ///
-/// Single-machine scope per #31 — the full multi-machine table is 2.4.4. The
-/// store is constructed once on `.standard` defaults; English-only literals
-/// throughout, per CLAUDE.md.
+/// The full multi-machine table (2.4.4) sits below this Mac's identity row: every
+/// known machine with its label, truncated id, today / total burn, and last sync,
+/// plus the rename / hide / forget row actions. The store is constructed once on
+/// `.standard` defaults; English-only literals throughout, per CLAUDE.md.
 private struct DevicesSettingsView: View {
     /// The label store for this Mac (system computer name by default; user
     /// override persisted under `MachineLabel.defaultsKey`).
@@ -175,6 +176,10 @@ private struct DevicesSettingsView: View {
     /// Live sync-freshness verdict, recomputed from the real `last-write-at`
     /// timestamp + iCloud availability (2.5.2).
     @StateObject private var monitor = SyncHealthMonitor()
+
+    /// Backs the full table: loads every machine's rollup + computes per-machine
+    /// burn off the main actor, owns rename/hide/forget (2.4.4).
+    @State private var fleet = DevicesViewModel()
 
     var body: some View {
         Form {
@@ -215,18 +220,218 @@ private struct DevicesSettingsView: View {
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
+
+            DevicesTableSection(fleet: fleet)
         }
         .formStyle(.grouped)
         // Persist every keystroke through the store so the override survives
         // relaunch and a freshly constructed store sees the same value. An empty
         // field clears the override and reverts to the system name (handled by
-        // `MachineLabel.rename`).
+        // `MachineLabel.rename`). The fleet table reloads so this Mac's row picks
+        // up the new label.
         .onChange(of: draftLabel) { _, newValue in
             labelStore.rename(to: newValue)
+            fleet.refresh()
         }
-        .onAppear { monitor.start() }
+        .onAppear {
+            monitor.start()
+            fleet.refresh()
+        }
         .onDisappear { monitor.stop() }
     }
+}
+
+/// The "Devices" section of the Devices tab: the full machine table (2.4.4).
+///
+/// One row per known machine, each showing the editable label, truncated id,
+/// today + total burn, and last-sync relative time, with rename / hide / forget
+/// actions in a trailing menu. Renders for one to five machines; an empty fleet or
+/// an iCloud-unavailable read shows an explanatory row rather than a blank table.
+private struct DevicesTableSection: View {
+    @Bindable var fleet: DevicesViewModel
+
+    /// The machine pending a forget confirmation, or `nil` when no dialog is up.
+    @State private var pendingForget: DeviceSummary?
+
+    var body: some View {
+        Section {
+            if let warning = fleet.warning {
+                Label(warning, systemImage: "icloud.slash")
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
+                    .labelStyle(.titleAndIcon)
+            } else if fleet.devices.isEmpty {
+                Text(fleet.isLoading ? "Loading devices…" : "No devices yet.")
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
+            } else {
+                ForEach(fleet.devices) { device in
+                    DeviceRowView(
+                        device: device,
+                        rename: { fleet.rename(device.id, to: $0) },
+                        toggleHidden: { fleet.toggleHidden(device.id) },
+                        forget: { pendingForget = device }
+                    )
+                }
+            }
+        } header: {
+            Text("Devices")
+        } footer: {
+            Text(
+                "Each Mac syncs its own usage file. Hiding excludes a device from your combined total; "
+                    + "forgetting deletes its synced file."
+            )
+            .font(.caption)
+            .foregroundStyle(.secondary)
+        }
+        // Forget is destructive (deletes the synced rollup file), so it is gated
+        // behind an explicit confirmation per the 2.4.4 Definition of Done.
+        .confirmationDialog(
+            "Forget this device?",
+            isPresented: forgetDialogBinding,
+            presenting: pendingForget
+        ) { device in
+            Button("Forget \(device.label)", role: .destructive) {
+                fleet.forget(device.id)
+                pendingForget = nil
+            }
+            Button("Cancel", role: .cancel) { pendingForget = nil }
+        } message: { device in
+            Text(forgetMessage(for: device))
+        }
+    }
+
+    /// Drives the confirmation dialog from the optional `pendingForget`.
+    private var forgetDialogBinding: Binding<Bool> {
+        Binding(
+            get: { pendingForget != nil },
+            set: { presented in if !presented { pendingForget = nil } }
+        )
+    }
+
+    private func forgetMessage(for device: DeviceSummary) -> String {
+        if device.isThisMac {
+            return "This deletes this Mac's synced usage file. It will be recreated on the next sync."
+        }
+        return "This deletes \(device.label)'s synced usage file from iCloud Drive. This can't be undone."
+    }
+}
+
+/// A single machine row: name (inline-editable), truncated id, today / total burn,
+/// last sync, and the rename / hide / forget action menu.
+private struct DeviceRowView: View {
+    let device: DeviceSummary
+    let rename: (String) -> Void
+    let toggleHidden: () -> Void
+    let forget: () -> Void
+
+    /// The label being edited inline, seeded from the device's current label and
+    /// committed on submit / focus loss.
+    @State private var draftLabel: String
+
+    init(
+        device: DeviceSummary,
+        rename: @escaping (String) -> Void,
+        toggleHidden: @escaping () -> Void,
+        forget: @escaping () -> Void
+    ) {
+        self.device = device
+        self.rename = rename
+        self.toggleHidden = toggleHidden
+        self.forget = forget
+        _draftLabel = State(initialValue: device.label)
+    }
+
+    var body: some View {
+        HStack(spacing: 12) {
+            VStack(alignment: .leading, spacing: 2) {
+                HStack(spacing: 6) {
+                    TextField("Name", text: $draftLabel)
+                        .textFieldStyle(.plain)
+                        .frame(maxWidth: 150, alignment: .leading)
+                        .onSubmit { rename(draftLabel) }
+                    if device.isThisMac {
+                        Text("This Mac")
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
+                    }
+                    if device.isHidden {
+                        Image(systemName: "eye.slash")
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+                Text(device.shortID)
+                    .font(.system(.caption, design: .monospaced))
+                    .foregroundStyle(.secondary)
+            }
+
+            Spacer()
+
+            VStack(alignment: .trailing, spacing: 2) {
+                Text(burnText(tokens: device.todayTokens, cost: device.todayCostUSD))
+                    .font(.callout)
+                    .monospacedDigit()
+                Text("Total \(burnText(tokens: device.totalTokens, cost: device.totalCostUSD))")
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+                    .monospacedDigit()
+                Text("Synced \(lastSyncText)")
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+            }
+
+            Menu {
+                Button(device.isHidden ? "Unhide" : "Hide", action: toggleHidden)
+                Button("Forget…", role: .destructive, action: forget)
+            } label: {
+                Image(systemName: "ellipsis.circle")
+            }
+            .menuStyle(.borderlessButton)
+            .menuIndicator(.hidden)
+            .fixedSize()
+        }
+        .opacity(device.isHidden ? 0.55 : 1)
+        // Re-seed the inline field when the row's label changes underneath us
+        // (e.g. a reload after a rename elsewhere).
+        .onChange(of: device.label) { _, newValue in
+            draftLabel = newValue
+        }
+    }
+
+    /// "12,345 tok · $0.42" — tokens grouped with thousands separators and the
+    /// cost to cents. Privacy-safe aggregate only.
+    private func burnText(tokens: Int, cost: Double) -> String {
+        "\(tokens.formatted(.number.grouping(.automatic))) tok · \(cost.formatted(.currency(code: "USD")))"
+    }
+
+    /// Relative "N days ago" from the machine's latest record day, or "never" when
+    /// it has no records.
+    private var lastSyncText: String {
+        guard let day = device.lastRecordDay,
+              let date = Self.dayFormatter.date(from: day)
+        else {
+            return "never"
+        }
+        return Self.relativeFormatter.localizedString(for: date, relativeTo: Date())
+    }
+
+    /// Parses `YYYY-MM-DD` record days as UTC midnight, matching how they're
+    /// produced.
+    private static let dayFormatter: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.calendar = Calendar(identifier: .gregorian)
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.timeZone = TimeZone(identifier: "UTC")
+        formatter.dateFormat = "yyyy-MM-dd"
+        return formatter
+    }()
+
+    private static let relativeFormatter: RelativeDateTimeFormatter = {
+        let formatter = RelativeDateTimeFormatter()
+        formatter.unitsStyle = .short
+        return formatter
+    }()
 }
 
 /// Live, observable source of this Mac's ``SyncHealth`` for the Devices tab
