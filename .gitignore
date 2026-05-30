@@ -24,6 +24,10 @@ xcuserdata/
 *.dSYM.zip
 *.dSYM
 
+# XcodeGen output — the project is generated from project.yml.
+# Run `xcodegen generate` (or ./Scripts/compile_and_run.sh once it lands).
+*.xcodeproj
+
 # Swift Package Manager
 .swiftpm/
 .build/

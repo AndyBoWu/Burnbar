@@ -4,9 +4,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Current state
 
-**Pre-implementation.** The repo contains only planning docs — no Xcode project, no Swift sources, no build/test scripts yet. M1.1.1 ("Init Xcode project") in [docs/PLAN.md](docs/PLAN.md) is the next concrete unit of work.
+**M1.1.1 landed — scaffold builds & tests green.** XcodeGen-generated 3-target project: `BurnbarCore` (framework — all testable logic), `Burnbar` (thin SwiftUI app), `BurnbarCoreTests` (host-free unit tests). The app runs as an `LSUIElement` menu-bar agent showing a placeholder `flame.fill` popover. Next concrete units in order: 1.1.2 (SwiftLint/SwiftFormat), 1.1.3 (GitHub Actions CI), 1.1.4 (build scripts), then the parsers (Epics 1.2 / 1.3).
 
-When sub-tickets ship and tooling lands, update this file's "Commands" section in the same PR.
+`Burnbar.xcodeproj` is **generated from `project.yml` and git-ignored** — run `xcodegen generate` after cloning (or after editing `project.yml`). When sub-tickets ship and tooling lands, update this file's "Commands" section in the same PR.
 
 ## Source of truth
 
@@ -52,10 +52,17 @@ Leaderboard upload (M3) aggregates *across* machines first (via the M2 reconcile
 
 ## Commands
 
-_To be added when M1.1 (project scaffold) lands. Expected entries per PLAN.md Epic 1.1:_
+**Working now (since M1.1.1):**
+
+- `xcodegen generate` — regenerate `Burnbar.xcodeproj` from `project.yml`. Run after clone or after editing `project.yml`. Requires `brew install xcodegen`.
+- `xcodebuild -project Burnbar.xcodeproj -scheme Burnbar -destination 'platform=macOS' build` — build the app (add `CODE_SIGNING_ALLOWED=NO` for unsigned local builds).
+- `xcodebuild -project Burnbar.xcodeproj -scheme Burnbar -destination 'platform=macOS' test` — run `BurnbarCoreTests`.
+
+_Planned (each lands with its sub-ticket; update this section in the same PR):_
 
 - `./Scripts/compile_and_run.sh` — build + launch Burnbar.app from clean clone (1.1.4)
 - `./Scripts/package_app.sh` — Release build → ad-hoc signed `.zip`/`.dmg` (1.6.1, 1.6.2)
+- `./Scripts/update_cask.sh` — bump Homebrew tap cask version + sha256 after a release (1.6.5)
 - `make lint` — SwiftLint + SwiftFormat (1.1.2)
 - `xcodebuild test` — unit tests (CI runs this per 1.1.3)
 - `./Scripts/install_launchagent.sh` — install LaunchAgent for login auto-start (1.6.3)

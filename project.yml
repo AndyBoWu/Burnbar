@@ -1,0 +1,72 @@
+name: Burnbar
+options:
+  bundleIdPrefix: xyz.andybowu
+  deploymentTarget:
+    macOS: "14.0"
+  createIntermediateGroups: true
+  groupSortPosition: top
+settings:
+  base:
+    SWIFT_VERSION: "6.0"
+    SWIFT_STRICT_CONCURRENCY: complete
+    MARKETING_VERSION: "0.1.0"
+    CURRENT_PROJECT_VERSION: "1"
+    # v0 distribution is ad-hoc signed (free). Developer ID + notarization
+    # is a later decision — see docs/PLAN.md Epic 1.6.
+    CODE_SIGN_IDENTITY: "-"
+    CODE_SIGN_STYLE: Manual
+    ENABLE_HARDENED_RUNTIME: NO
+targets:
+  # Provider-agnostic core: UsageRecord (1.2.3), parsers (1.2/1.3),
+  # cost engine (1.4). Lives in a framework so it is unit-testable
+  # without launching the app — keeps `xcodebuild test` host-free.
+  BurnbarCore:
+    type: framework
+    platform: macOS
+    sources:
+      - Sources/BurnbarCore
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: xyz.andybowu.BurnbarCore
+        GENERATE_INFOPLIST_FILE: YES
+
+  # Thin SwiftUI menu-bar shell. LSUIElement agent (no Dock icon).
+  Burnbar:
+    type: application
+    platform: macOS
+    sources:
+      - Sources/Burnbar
+    dependencies:
+      - target: BurnbarCore
+        embed: true
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: xyz.andybowu.Burnbar
+        PRODUCT_NAME: Burnbar
+        GENERATE_INFOPLIST_FILE: NO
+        INFOPLIST_FILE: Sources/Burnbar/Info.plist
+
+  BurnbarCoreTests:
+    type: bundle.unit-test
+    platform: macOS
+    sources:
+      - Tests/BurnbarCoreTests
+    dependencies:
+      - target: BurnbarCore
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: xyz.andybowu.BurnbarCoreTests
+        GENERATE_INFOPLIST_FILE: YES
+
+schemes:
+  Burnbar:
+    build:
+      targets:
+        Burnbar: all
+        BurnbarCore: all
+        BurnbarCoreTests: [test]
+    run:
+      config: Debug
+    test:
+      targets:
+        - BurnbarCoreTests
