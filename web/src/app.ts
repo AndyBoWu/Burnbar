@@ -1,6 +1,6 @@
 import { type Context, Hono, type Next } from 'hono'
 import { type AuthVerifier, bearerToken, githubTokenVerifier, type Identity } from './auth'
-import { deleteMe, ensureUser, getMe, leaderboard, PERIODS, type Period, PROVIDERS, type Provider, upsertUsage } from './db'
+import { deleteMe, ensureUser, getMe, leaderboard, PERIODS, type Period, PROVIDERS, type Provider, updateUserFlags, type UserFlags, upsertUsage } from './db'
 import { logError, logRequest } from './log'
 import { checkRateLimit, RATE_LIMITS } from './ratelimit'
 
@@ -57,6 +57,30 @@ function validateUsage(body: unknown): { ok: true; value: ValidUsage } | { ok: f
       cost_usd: record.cost_usd,
     },
   }
+}
+
+const FLAG_KEYS = ['hidden', 'opted_in'] as const
+
+/** Validate a PATCH /api/v1/me body: allowlist {hidden, opted_in}, booleans, at least one. */
+function validateUserFlags(body: unknown): { ok: true; value: UserFlags } | { ok: false; error: string } {
+  if (typeof body !== 'object' || body === null || Array.isArray(body)) {
+    return { ok: false, error: 'body must be a JSON object' }
+  }
+  const record = body as Record<string, unknown>
+  const extra = Object.keys(record).filter((k) => !FLAG_KEYS.includes(k as (typeof FLAG_KEYS)[number]))
+  if (extra.length > 0) return { ok: false, error: `unexpected keys: ${extra.join(', ')}` }
+  for (const key of FLAG_KEYS) {
+    if (key in record && typeof record[key] !== 'boolean') {
+      return { ok: false, error: `${key} must be a boolean` }
+    }
+  }
+  if (!('hidden' in record) && !('opted_in' in record)) {
+    return { ok: false, error: 'body must include at least one of: hidden, opted_in' }
+  }
+  const value: UserFlags = {}
+  if ('hidden' in record) value.hidden = record.hidden as boolean
+  if ('opted_in' in record) value.opted_in = record.opted_in as boolean
+  return { ok: true, value }
 }
 
 export function createApp(deps: Deps): Hono<{ Bindings: Env; Variables: { identity: Identity } }> {
@@ -126,6 +150,23 @@ export function createApp(deps: Deps): Hono<{ Bindings: Env; Variables: { identi
     const identity = c.get('identity')
     const me = await getMe(c.env.DB, identity.githubId)
     if (!me) return c.json({ github_id: identity.githubId, github_login: identity.githubLogin, opted_in: false, hidden: false, history: [] })
+    return c.json(me)
+  })
+
+  app.patch('/api/v1/me', requireAuth, async (c) => {
+    let body: unknown
+    try {
+      body = await c.req.json()
+    } catch {
+      return c.json({ error: 'invalid JSON' }, 400)
+    }
+    const result = validateUserFlags(body)
+    if (!result.ok) return c.json({ error: result.error }, 400)
+    const identity = c.get('identity')
+    // Ensure the user row exists so flags can be set before the first upload.
+    await ensureUser(c.env.DB, identity.githubId, identity.githubLogin)
+    await updateUserFlags(c.env.DB, identity.githubId, result.value)
+    const me = await getMe(c.env.DB, identity.githubId)
     return c.json(me)
   })
 
