@@ -1,0 +1,27 @@
+{
+  "name": "burnbar-api",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Burnbar leaderboard API — Cloudflare Workers + D1",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy:staging": "wrangler deploy --env staging",
+    "deploy:prod": "wrangler deploy --env prod",
+    "migrate:local": "wrangler d1 migrations apply burnbar-local --local",
+    "migrate:staging": "wrangler d1 migrations apply burnbar-staging --env staging --remote",
+    "migrate:prod": "wrangler d1 migrations apply burnbar-prod --env prod --remote",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "hono": "^4.6.14"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20241218.0",
+    "better-sqlite3": "^11.7.0",
+    "typescript": "^5.7.2",
+    "vitest": "^2.1.8",
+    "wrangler": "^3.99.0"
+  }
+}
