@@ -33,3 +33,9 @@ id = "REPLACE_AFTER_wrangler_kv_namespace_create_RATE_LIMIT_staging"
 [[env.prod.kv_namespaces]]
 binding = "RATE_LIMIT"
 id = "REPLACE_AFTER_wrangler_kv_namespace_create_RATE_LIMIT_prod"
+
+# Workers Logs / analytics — powers the error-rate + last-24h-errors dashboard
+# (3.1.5). Visible in the Cloudflare dashboard after deploy.
+[observability]
+enabled = true
+head_sampling_rate = 1
