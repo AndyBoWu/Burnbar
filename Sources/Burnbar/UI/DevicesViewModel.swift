@@ -32,6 +32,11 @@ final class DevicesViewModel {
     /// re-entrant reads.
     private(set) var isLoading = false
 
+    /// `true` while a manual "Force resync" (2.5.3) is in flight, so the view can
+    /// disable the button and show a spinner. Separate from ``isLoading`` because a
+    /// resync is a write-then-read, not a plain table reload.
+    private(set) var isResyncing = false
+
     /// A non-fatal explanation when the fleet can't be read (iCloud Drive off /
     /// signed out). `nil` on a clean load. Matches the popover's "missing source
     /// is a warning, not a crash" rule.
@@ -48,13 +53,21 @@ final class DevicesViewModel {
     private let builder: DeviceTableBuilder
     private let defaults: UserDefaults
 
+    /// Builds the ``ForceResync`` driver for one manual resync (2.5.3). Injected so
+    /// tests can supply a fake (no real iCloud / providers); production wires the
+    /// shared write coordinator + a fresh multi-machine read against the resolved
+    /// iCloud directory. Invoked on the main actor (the heavy work runs inside the
+    /// returned driver's async closures, off-main).
+    private let makeForceResync: @MainActor () -> ForceResync
+
     init(
         iCloudContainer: ICloudContainer = ICloudContainer(),
         registry: MachineRegistry = MachineRegistry(),
         hiddenStore: HiddenMachines = HiddenMachines(),
         labelStore: MachineLabel = MachineLabel(),
         builder: DeviceTableBuilder = DeviceTableBuilder(),
-        defaults: UserDefaults = .standard
+        defaults: UserDefaults = .standard,
+        makeForceResync: @escaping @MainActor () -> ForceResync = DevicesViewModel.productionForceResync
     ) {
         self.iCloudContainer = iCloudContainer
         self.registry = registry
@@ -62,6 +75,7 @@ final class DevicesViewModel {
         self.labelStore = labelStore
         self.builder = builder
         self.defaults = defaults
+        self.makeForceResync = makeForceResync
     }
 
     // MARK: - Loading
@@ -191,6 +205,56 @@ final class DevicesViewModel {
             let file = directory.appendingPathComponent("\(machineID).jsonl", isDirectory: false)
             try? FileManager.default.removeItem(at: file)
         }.value
+    }
+
+    // MARK: - Force resync (2.5.3)
+
+    /// Manual "Force resync": force an immediate rollup WRITE of this machine's
+    /// `{machine_id}.jsonl`, then a READ refresh of the fleet table and the
+    /// combined view. No-op while a resync is already in flight (the button is
+    /// also disabled), so a double-tap can't launch two writes.
+    ///
+    /// The write-then-read sequence and its structured `SyncLog` line run off the
+    /// main actor inside ``ForceResync`` (the coordinator is an `actor`; the read
+    /// is plain file I/O), so the main thread is never blocked. On completion this
+    /// posts `.burnbarSettingsDidChange` — which the popover's combined view and
+    /// the `SyncHealth` monitor already observe — and reloads this table, so the
+    /// UI reflects the fresh data immediately. Targets the DoD's ~3-second budget.
+    func forceResync() {
+        guard !isResyncing else { return }
+        isResyncing = true
+
+        let resync = makeForceResync()
+        Task {
+            await resync.run()
+            // The fresh write + re-read landed: tell the combined view / sync
+            // health to re-read, and reload our own table.
+            NotificationCenter.default.post(name: .burnbarSettingsDidChange, object: nil)
+            isResyncing = false
+            refresh()
+        }
+    }
+
+    /// Production ``ForceResync`` factory: drive the shared write coordinator's
+    /// manual trigger, then re-read every machine's rollup from the resolved
+    /// iCloud directory, logging to the real `~/Library/Logs/Burnbar/sync.log`.
+    ///
+    /// Both the write (coordinator is an `actor`) and the read (`ICloudContainer`
+    /// resolve + file enumeration block) run inside the injected async closures,
+    /// off the main thread.
+    @MainActor
+    static func productionForceResync() -> ForceResync {
+        let coordinator = SyncWriteController.makeProductionCoordinator()
+        let container = ICloudContainer()
+        return ForceResync(
+            write: { await coordinator.forceWrite() },
+            readMachineCount: {
+                await Task.detached {
+                    guard let directory = container.resolve().url else { return 0 }
+                    return MultiMachineReader(directory: directory).readMachines().count
+                }.value
+            }
+        )
     }
 
     // MARK: - Helpers

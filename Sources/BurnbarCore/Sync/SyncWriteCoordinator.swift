@@ -149,6 +149,27 @@ public actor SyncWriteCoordinator {
     /// - Returns: the outcome; never throws (errors are returned as `.failed`).
     @discardableResult
     public func write() async -> SyncWriteOutcome {
+        await writeOnce()
+    }
+
+    /// Manual-trigger entry point for the "Force resync" action (2.5.3).
+    ///
+    /// Identical to ``write()`` — one immediate rollup write with the same overlap
+    /// guard — but named so the call site reads as a user-initiated resync rather
+    /// than a scheduled tick. Lets the Settings → Devices button force a fresh
+    /// `{machine_id}.jsonl` on demand without waiting for the next timer fire,
+    /// coalescing cleanly (``SyncWriteSkip/alreadyInFlight``) if a scheduled write
+    /// happens to be mid-flight.
+    ///
+    /// - Returns: the outcome; never throws (errors are returned as `.failed`).
+    @discardableResult
+    public func forceWrite() async -> SyncWriteOutcome {
+        await writeOnce()
+    }
+
+    /// Shared body for ``write()`` / ``forceWrite()``: see ``write()`` for the
+    /// step-by-step contract.
+    private func writeOnce() async -> SyncWriteOutcome {
         guard !isWriting else { return .skipped(.alreadyInFlight) }
         isWriting = true
         defer { isWriting = false }
