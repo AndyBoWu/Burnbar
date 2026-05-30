@@ -88,10 +88,9 @@ final class UsageStore {
         let providers = ProviderPreferences.load(from: defaults)
         let mode = viewMode
         Task {
-            let snapshot: Snapshot
-            switch mode {
+            let snapshot: Snapshot = switch mode {
             case .thisMac:
-                snapshot = await Self.loadThisMac(
+                await Self.loadThisMac(
                     claude: claude,
                     codex: codex,
                     providers: providers,
@@ -99,7 +98,7 @@ final class UsageStore {
                     aggregator: aggregator
                 )
             case .allMacs:
-                snapshot = await Self.loadAllMacs(
+                await Self.loadAllMacs(
                     iCloudContainer: iCloudContainer,
                     reconciler: reconciler,
                     calculator: calculator,
@@ -194,11 +193,10 @@ final class UsageStore {
     ) async -> Snapshot {
         let location = iCloudContainer.resolve()
         guard let directory = location.url else {
-            let reason: String
-            if case let .unavailable(message) = location {
-                reason = message
+            let reason: String = if case let .unavailable(message) = location {
+                message
             } else {
-                reason = "iCloud is unavailable."
+                "iCloud is unavailable."
             }
             return Snapshot(today: nil, week: nil, month: nil, warnings: ["All Macs: \(reason)"])
         }
