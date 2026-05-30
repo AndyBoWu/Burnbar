@@ -43,13 +43,19 @@ final class UsageStore {
     }
 
     /// Reload usage. No-op while a load is already in flight.
+    ///
+    /// The provider on/off flags from the Providers settings tab (1.5.6) are read
+    /// fresh here, so toggling a provider and calling `refresh()` immediately
+    /// drops/restores that provider's records (and therefore its popover tile).
     func refresh() {
         guard !isLoading else { return }
         isLoading = true
+        let providers = ProviderPreferences.load()
         Task {
             let snapshot = await Self.load(
                 claude: claude,
                 codex: codex,
+                providers: providers,
                 calculator: calculator,
                 aggregator: aggregator
             )
@@ -72,24 +78,34 @@ final class UsageStore {
 
     /// Runs off the main actor (nonisolated), so the blocking file/SQLite reads
     /// never stall the UI. Providers are value types (`Sendable`).
+    ///
+    /// A provider disabled in Settings (1.5.6) is skipped entirely — its parser
+    /// never runs, so it contributes no records and no tile. The two-provider hard
+    /// cap (CLAUDE.md) means this is exactly Claude and/or Codex; no other source
+    /// is ever read.
     private nonisolated static func load(
         claude: ClaudeUsageProvider,
         codex: CodexUsageProvider,
+        providers: ProviderPreferences,
         calculator: CostCalculator,
         aggregator: TimeWindowAggregator
     ) async -> Snapshot {
         var records: [UsageRecord] = []
         var warnings: [String] = []
 
-        do {
-            records += try claude.usageRecords()
-        } catch {
-            warnings.append("Claude: \(error.localizedDescription)")
+        if providers.isEnabled(.claude) {
+            do {
+                records += try claude.usageRecords()
+            } catch {
+                warnings.append("Claude: \(error.localizedDescription)")
+            }
         }
-        do {
-            records += try codex.usageRecords()
-        } catch {
-            warnings.append("Codex: \(error.localizedDescription)")
+        if providers.isEnabled(.codex) {
+            do {
+                records += try codex.usageRecords()
+            } catch {
+                warnings.append("Codex: \(error.localizedDescription)")
+            }
         }
 
         let priced = calculator.priced(records)

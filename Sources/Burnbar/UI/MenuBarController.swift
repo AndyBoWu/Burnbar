@@ -14,6 +14,9 @@ final class MenuBarController: NSObject {
     private let statusItem: NSStatusItem
     private let popover: NSPopover
     private let store = UsageStore()
+    /// Background refresh timer, re-armed from the persisted refresh rate (1.5.6)
+    /// on launch and whenever the setting changes.
+    private var refreshTimer: Timer?
 
     override init() {
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
@@ -48,7 +51,41 @@ final class MenuBarController: NSObject {
             Task { @MainActor in self?.refresh() }
         }
 
+        // A Settings change (provider toggle / refresh rate) re-reads usage and
+        // re-arms the background timer so the popover reflects it immediately.
+        _ = NotificationCenter.default.addObserver(
+            forName: .burnbarSettingsDidChange,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            Task { @MainActor in
+                self?.store.refresh()
+                self?.rearmRefreshTimer()
+            }
+        }
+
+        // Apply the persisted theme on launch so the menu bar / popover / Settings
+        // window honor the user's last choice before any window is shown.
+        AppearanceController.apply(AppTheme.fromStorage(UserDefaults.standard.string(forKey: PreferenceKeys.theme)))
+
         store.refresh()
+        rearmRefreshTimer()
+    }
+
+    /// Re-create the background refresh timer from the persisted refresh rate.
+    /// Invalidates any prior timer first so the cadence change takes effect at
+    /// once rather than on the next tick.
+    private func rearmRefreshTimer() {
+        refreshTimer?.invalidate()
+        let interval = RefreshInterval.fromStorage(
+            UserDefaults.standard.string(forKey: PreferenceKeys.refreshInterval)
+        )
+        let timer = Timer(timeInterval: interval.seconds, repeats: true) { [weak self] _ in
+            Task { @MainActor in self?.store.refresh() }
+        }
+        // Common run-loop mode so the timer still fires while a menu/popover is up.
+        RunLoop.main.add(timer, forMode: .common)
+        refreshTimer = timer
     }
 
     /// Routes a status-item click: right-click (or control-click) shows the
@@ -166,4 +203,9 @@ extension Notification.Name {
     /// Posted after usage data is re-read so the UI (status item, popover) can
     /// refresh. See `MenuBarController` and `UsageStore`.
     static let burnbarDidRefresh = Notification.Name("xyz.andybowu.Burnbar.didRefresh")
+
+    /// Posted when a Settings control changes that affects loading (provider
+    /// toggles, refresh rate). `MenuBarController` re-reads usage and re-arms the
+    /// background refresh timer so the popover reflects the new state at once.
+    static let burnbarSettingsDidChange = Notification.Name("xyz.andybowu.Burnbar.settingsDidChange")
 }
