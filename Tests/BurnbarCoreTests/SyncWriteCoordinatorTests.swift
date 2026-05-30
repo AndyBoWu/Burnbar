@@ -7,6 +7,7 @@ import XCTest
 /// successful write at the expected instants, stays unchanged when iCloud is
 /// unavailable or a load/write fails, and concurrent triggers never overlap.
 final class SyncWriteCoordinatorTests: XCTestCase {
+
     // MARK: - Fakes
 
     /// In-memory ``LastWriteStore``. A reference type guarded by a lock so it is
@@ -63,7 +64,7 @@ final class SyncWriteCoordinatorTests: XCTestCase {
                 cacheReadTokens: nil,
                 cacheCreationTokens: nil,
                 costUSD: 0.01
-            ),
+            )
         ]
     }
 
@@ -102,7 +103,7 @@ final class SyncWriteCoordinatorTests: XCTestCase {
         // Simulate the timer firing at two successive instants (interval apart).
         let instants = [
             Date(timeIntervalSince1970: 1_700_000_000),
-            Date(timeIntervalSince1970: 1_700_000_300), // +5 min
+            Date(timeIntervalSince1970: 1_700_000_300) // +5 min
         ]
         let index = Counter()
         let directory = Self.directory
@@ -240,7 +241,9 @@ final class SyncWriteCoordinatorTests: XCTestCase {
         func wait() async {
             // Signal anyone awaiting the waiter's arrival.
             hasWaiterArrived = true
-            for continuation in arrivalWaiters { continuation.resume() }
+            for continuation in arrivalWaiters {
+                continuation.resume()
+            }
             arrivalWaiters.removeAll()
 
             if isOpen { return }
@@ -256,7 +259,9 @@ final class SyncWriteCoordinatorTests: XCTestCase {
         /// Open the gate, resuming every current and future waiter.
         func open() {
             isOpen = true
-            for continuation in waiters { continuation.resume() }
+            for continuation in waiters {
+                continuation.resume()
+            }
             waiters.removeAll()
         }
     }

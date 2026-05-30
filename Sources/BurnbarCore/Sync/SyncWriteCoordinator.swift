@@ -129,7 +129,9 @@ public actor SyncWriteCoordinator {
 
     /// The currently recorded `last-write-at`, or `nil` if none. Convenience for
     /// callers/tests that want to observe the timestamp through the coordinator.
-    public func lastWriteAt() -> Date? { store.lastWriteAt() }
+    public func lastWriteAt() -> Date? {
+        store.lastWriteAt()
+    }
 
     /// Attempt one rollup write.
     ///
@@ -153,11 +155,10 @@ public actor SyncWriteCoordinator {
 
         let location = resolveLocation()
         guard let directory = location.url else {
-            let reason: String
-            if case let .unavailable(unavailableReason) = location {
-                reason = unavailableReason
+            let reason: String = if case let .unavailable(unavailableReason) = location {
+                unavailableReason
             } else {
-                reason = "iCloud unavailable."
+                "iCloud unavailable."
             }
             return .skipped(.iCloudUnavailable(reason: reason))
         }
