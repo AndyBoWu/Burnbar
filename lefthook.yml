@@ -6,9 +6,10 @@
 #   brew install lefthook   # or: brew install swiftlint swiftformat lefthook
 #   lefthook install        # wires up .git/hooks
 #
-# Once installed, every `git commit` runs `make lint` and blocks the commit if
-# SwiftFormat or SwiftLint reports any violation. If you skip Lefthook, run
+# Once installed, every `git commit` runs `make lint` (style) and a gitleaks
+# secret scan, blocking the commit on any violation. If you skip Lefthook, run
 # `make lint` by hand before committing (see CLAUDE.md "Workflow expectations").
+# The gitleaks step is also enforced server-side by the 'Secret scan' CI job.
 
 pre-commit:
   parallel: false
@@ -18,3 +19,9 @@ pre-commit:
       glob: "*.{swift,swiftlint.yml,swiftformat}"
       run: make lint
       fail_text: "Style violations found — run 'make format' then re-stage."
+    secrets:
+      # Scan only the staged changes for secrets before they're committed.
+      # No-op if gitleaks isn't installed (brew install gitleaks); the CI
+      # 'Secret scan' job is the always-on backstop.
+      run: command -v gitleaks >/dev/null 2>&1 && gitleaks git --staged --redact --verbose --config .gitleaks.toml || true
+      fail_text: "Potential secret detected — remove it before committing (gitleaks)."

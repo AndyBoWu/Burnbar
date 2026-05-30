@@ -47,8 +47,10 @@ sparkle_ed_priv.key
 # Secrets
 .env
 .env.local
+.dev.vars
 *.key
 *.pem
+*.mobileprovision
 secrets/
 
 # IDE / editor
@@ -73,3 +75,4 @@ web/**/.wrangler/
 web/**/dist/
 web/**/.next/
 web/**/.open-next/
+web/**/.vercel/
