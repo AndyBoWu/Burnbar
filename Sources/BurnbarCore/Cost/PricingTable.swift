@@ -64,10 +64,33 @@ public struct ModelPricing: Sendable, Equatable, Hashable {
 /// normalization. Unknown models return `nil` from ``pricing(for:)`` so the cost
 /// engine can flag them ("Unknown model") instead of silently costing them at $0.
 public enum PricingTable {
-    /// Date the rates below were last verified against the official pricing pages.
-    /// Mirrors the `Pricing snapshot:` comment at the top of this file. The 1.4.4
-    /// freshness test reads this and fails if it is more than 90 days old.
+    /// Date the rates below were last verified against the official pricing pages,
+    /// as a `YYYY-MM-DD` string. Mirrors the `Pricing snapshot:` comment at the top
+    /// of this file. The 1.4.4 freshness test reads ``snapshotDateValue`` (parsed
+    /// from this string) and fails if it is more than 90 days old.
     public static let snapshotDate = "2026-05-29"
+
+    /// ``snapshotDate`` parsed into a `Date` for programmatic age checks.
+    ///
+    /// Parsed once from ``snapshotDate`` (single source of truth — no duplicated
+    /// literal) at fixed `UTC` midnight via an `en_US_POSIX` formatter so the value
+    /// is locale- and timezone-stable. The 1.4.4 freshness test
+    /// (`testPricingTableIsFresh`) compares this against `Date()` and fails if the
+    /// snapshot is more than 90 days stale, prompting an "update PricingTable.swift"
+    /// rate review.
+    public static let snapshotDateValue: Date = {
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.timeZone = TimeZone(identifier: "UTC")
+        formatter.dateFormat = "yyyy-MM-dd"
+        // `snapshotDate` is a compile-time constant validated by
+        // `testSnapshotDateIsValidISODate`; force-unwrap is safe and a malformed
+        // edit should fail loudly rather than silently report "fresh".
+        guard let date = formatter.date(from: snapshotDate) else {
+            preconditionFailure("PricingTable.snapshotDate is not a valid YYYY-MM-DD string: \(snapshotDate)")
+        }
+        return date
+    }()
 
     /// All known per-model rates, keyed by exact model id.
     ///
