@@ -1,0 +1,7 @@
+{"type":"assistant","timestamp":"2026-05-29T09:00:00.000Z","message":{"model":"claude-opus-4-7","role":"assistant","content":[{"type":"text","text":"REDACTED"}],"usage":{"input_tokens":10,"cache_creation_input_tokens":200,"cache_read_input_tokens":1000,"output_tokens":20}}}
+{"type":"summary","summary":"REDACTED"}
+{"type":"assistant","timestamp":"2026-05-29T09:01:00.000Z","message":{"model":"claude-sonnet-4-6","role":"assistant","content":[{"type":"text","text":"REDACTED"}],"usage":{"input_tokens":5,"cache_creation_input_tokens":0,"cache_read_input_tokens":300,"output_tokens":40}}}
+{"type":"assistant","timestamp":"2026-05-29T09:02:00.000Z","message":{"model":"claude-sonnet-4-6","role":"assistant","content":[{"type":"text","text":"REDACTED"}],"usage":{"input_tokens":7,"output_tokens":3}}}
+{"type":"assistant","timestamp":"2026-05-29T09:03:00.000Z","message":{"role":"assistant","content":[{"type":"text","text":"REDACTED"}],"usage":{"input_tokens":1,"output_tokens":1}}}
+{ this is a half-written / garbled line that Claude may emit mid-append
+{"type":"assistant","timestamp":"2026-05-29T09:04:00.000Z","message":{"model":"claude-opus-4-7","role":"assistant","content":[{"type":"text","text":"REDACTED"}]}}
