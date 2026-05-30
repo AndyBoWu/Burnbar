@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Burnbar Sparkle appcast — TEMPLATE (Epic 1.6.4, skeleton only).
+
+  This file is NOT live. Auto-update is OFF in v0: the app sets
+  SUEnableAutomaticChecks = NO and ships a placeholder SUFeedURL, so Sparkle
+  never fetches this appcast. It exists only so the release plumbing is in
+  place for a future milestone.
+
+  Every UPPERCASE_PLACEHOLDER below is filled in at release time (see
+  docs/RELEASING-sparkle.md):
+
+    - X.Y.Z              -> the release MARKETING_VERSION (e.g. 0.2.0)
+    - BUILD              -> CFBundleVersion / CURRENT_PROJECT_VERSION (e.g. 12)
+    - PUBDATE            -> RFC 822 date, e.g. `date -R` output
+    - DOWNLOAD_BASE_URL  -> where the GitHub Release zip is hosted
+    - LENGTH_BYTES       -> byte size of the zip (stat -f%z dist/Burnbar-vX.Y.Z.zip)
+    - EDDSA_SIGNATURE    -> output of Sparkle's bin/sign_update on the zip
+
+  The enclosure URL matches Scripts/package_app.sh output: Burnbar-vX.Y.Z.zip.
+-->
+<rss version="2.0" xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle" xmlns:dc="http://purl.org/dc/elements/1.1/">
+  <channel>
+    <title>Burnbar</title>
+    <link>https://REPLACE_AT_RELEASE.example.com/appcast.xml</link>
+    <description>Burnbar updates</description>
+    <language>en</language>
+    <item>
+      <title>Version X.Y.Z</title>
+      <pubDate>PUBDATE</pubDate>
+      <sparkle:version>BUILD</sparkle:version>
+      <sparkle:shortVersionString>X.Y.Z</sparkle:shortVersionString>
+      <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+      <enclosure
+        url="https://DOWNLOAD_BASE_URL/Burnbar-vX.Y.Z.zip"
+        sparkle:version="BUILD"
+        sparkle:shortVersionString="X.Y.Z"
+        sparkle:edSignature="EDDSA_SIGNATURE"
+        length="LENGTH_BYTES"
+        type="application/octet-stream" />
+    </item>
+  </channel>
+</rss>
