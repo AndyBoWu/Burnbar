@@ -13,8 +13,9 @@ Three milestones. Each ships independently. See [docs/PLAN.md](docs/PLAN.md) for
 - [ ] Menu bar popover UI + minimal Settings window
 - [ ] LaunchAgent template for auto-start at login
 - [ ] DMG release build
+- [ ] Homebrew tap — one-line install: `brew install --cask andybowu/tap/burnbar`
 
-**Non-goals for P1**: no sync, no leaderboard.
+**Non-goals for P1**: no sync, no leaderboard, no official homebrew-cask (needs Developer ID + notarization — deferred post-MVP).
 
 ## Phase 2 — Cross-device aggregation (1 week)
 

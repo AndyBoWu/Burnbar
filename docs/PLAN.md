@@ -37,9 +37,9 @@ Anything beyond these two (Gemini, Grok, Cursor, Copilot, Ollama, …) is out of
 | 1.3 | **Codex parser** | Read `~/.codex/state_5.sqlite` `threads` table; emit unified `UsageRecord` |
 | 1.4 | **Token cost engine** | Pricing table (Sonnet/Opus/Haiku/GPT-5 variants, input/output/cache), $/day, monthly projection |
 | 1.5 | **Menu bar UI + Settings window** | Popover (provider tiles, burn bars, reset countdowns) + minimal Settings (toggles, about) |
-| 1.6 | **Release pipeline** | DMG + PKG build, ad-hoc signing for v0, LaunchAgent template, Sparkle skeleton |
+| 1.6 | **Release pipeline** | DMG + zip build, ad-hoc signing for v0, Homebrew tap (one-line install), LaunchAgent template, Sparkle skeleton |
 
-**Epics: 6** · **Sub-tickets: 27**
+**Epics: 6** · **Sub-tickets: 28**
 
 ### M1 sub-tickets
 
@@ -145,7 +145,7 @@ Anything beyond these two (Gemini, Grok, Cursor, Copilot, Ollama, …) is out of
   General: theme (auto/light/dark), refresh rate. Providers: enable Claude/Codex toggles. About: version, GitHub link, privacy link.
   *DoD:* Each setting persists; provider toggle disables corresponding parser.
 
-#### Epic 1.6: Release pipeline (4)
+#### Epic 1.6: Release pipeline (5)
 
 - **1.6.1 `Scripts/package_app.sh`**
   Build app bundle (Release config), ad-hoc sign (`codesign --sign -`), zip to `dist/Burnbar-vX.Y.Z.zip`.
@@ -162,6 +162,10 @@ Anything beyond these two (Gemini, Grok, Cursor, Copilot, Ollama, …) is out of
 - **1.6.4 Sparkle skeleton (no deploy)**
   Add Sparkle framework, generate EdDSA keypair, write `appcast.xml` template, document key custody. Auto-update **off** in v0.
   *DoD:* Sparkle integrated but no update endpoint; deferred to a future milestone.
+
+- **1.6.5 Homebrew tap (one-line install)**
+  Create a public `andybowu/homebrew-tap` repo with `Casks/burnbar.rb` pointing at the GitHub Release zip from 1.6.1. `Scripts/update_cask.sh` bumps `version` + `sha256` after each release; cask sets `auto_updates false` (Sparkle off in v0). README documents `brew install --cask andybowu/tap/burnbar`. **Note:** ad-hoc signing means Gatekeeper still quarantines on first launch — README documents either `--no-quarantine` or right-click → Open, and flags that Developer ID + notarization (deferred, post-MVP) removes this friction and is the prerequisite for the *official* homebrew-cask. Official cask is explicitly **out of scope for v0**.
+  *DoD:* `brew install --cask andybowu/tap/burnbar` on a clean Mac installs Burnbar; it launches after the documented first-open step; `brew upgrade` picks up a newer release.
 
 ---
 
@@ -412,10 +416,10 @@ Anything beyond these two (Gemini, Grok, Cursor, Copilot, Ollama, …) is out of
 
 | Milestone | Epics | Sub-tickets | Est. duration |
 |---|---|---|---|
-| 1 — Local Swift App (Claude + Codex) | 6 | 27 | 1–2 weeks |
+| 1 — Local Swift App (Claude + Codex) | 6 | 28 | 1–2 weeks |
 | 2 — Cross-Device Aggregation | 5 | 18 | 1 week |
 | 3 — Global Leaderboard | 6 | 27 | 2–3 weeks |
-| **Total** | **17** | **~72** | **4–6 weeks** |
+| **Total** | **17** | **~73** | **4–6 weeks** |
 
 ---
 
