@@ -59,6 +59,22 @@ xcodegen generate
 xcodebuild -project Burnbar.xcodeproj -scheme Burnbar -destination 'platform=macOS' test
 ```
 
+## Auto-start at login
+
+Install a LaunchAgent so Burnbar launches automatically when you log in:
+
+```bash
+./Scripts/install_launchagent.sh /Applications/Burnbar.app   # or omit the path if installed to /Applications
+```
+
+Disable it anytime:
+
+```bash
+./Scripts/install_launchagent.sh --uninstall
+```
+
+This only ever writes `~/Library/LaunchAgents/xyz.andybowu.Burnbar.plist` (our own bundle id) — never a system-wide or third-party agent.
+
 ## License
 
 MIT © Andy Wu
