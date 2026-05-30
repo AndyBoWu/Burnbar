@@ -63,7 +63,7 @@ final class DeviceTableBuilderTests: XCTestCase {
             machineID: "abcdef0123456789",
             records: [
                 claude(day: "2026-05-30", input: 1_000_000), // today
-                claude(day: "2026-05-29", input: 2_000_000), // earlier
+                claude(day: "2026-05-29", input: 2_000_000) // earlier
             ]
         )
         let rows = builder().rows(
@@ -136,7 +136,7 @@ final class DeviceTableBuilderTests: XCTestCase {
         let machines = [
             MachineUsage(machineID: "id-zed", records: []),
             MachineUsage(machineID: "id-this", records: []),
-            MachineUsage(machineID: "id-abe", records: []),
+            MachineUsage(machineID: "id-abe", records: [])
         ]
         let rows = builder().rows(
             from: machines,

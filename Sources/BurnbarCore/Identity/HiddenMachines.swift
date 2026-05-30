@@ -84,7 +84,7 @@ public struct HiddenMachines {
     /// Partition `machineIDs` into the visible (not hidden) subset, preserving the
     /// input order. The combined-view caller uses this to exclude hidden machines
     /// from the reconciled total.
-    public func visible<S: Sequence>(from machineIDs: S) -> [String] where S.Element == String {
+    public func visible(from machineIDs: some Sequence<String>) -> [String] {
         let hidden = hiddenIDs()
         return machineIDs.filter { !hidden.contains($0) }
     }

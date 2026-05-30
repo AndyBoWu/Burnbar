@@ -92,7 +92,7 @@ final class DevicesViewModel {
 
     /// The outcome of one off-main load: the assembled rows plus an optional
     /// non-fatal warning.
-    private struct LoadResult: Sendable {
+    private struct LoadResult {
         let devices: [DeviceSummary]
         let warning: String?
     }
