@@ -62,6 +62,7 @@ Leaderboard upload (M3) aggregates *across* machines first (via the M2 reconcile
 - `make format` — auto-apply SwiftFormat + `swiftlint --fix` in place (1.1.2).
 - `./Scripts/package_app.sh` — Release build → ad-hoc sign → `dist/Burnbar-vX.Y.Z.zip` (prints sha256) (1.6.1). v0 ad-hoc only (no hardened runtime); right-click → Open on first launch.
 - `./Scripts/install_launchagent.sh [app] | --uninstall` — install/remove the login LaunchAgent (`~/Library/LaunchAgents/xyz.andybowu.Burnbar.plist`) (1.6.3).
+- `./Scripts/make_dmg.sh` — wrap the ad-hoc-signed `Burnbar.app` (reused from a prior Release build, else built) into a drag-to-Applications `dist/Burnbar-vX.Y.Z.dmg` (prints sha256) (1.6.2). Prefers `create-dmg` (`brew install create-dmg`) for a styled window; falls back to plain `hdiutil` if the Finder styling step fails (e.g. headless/CI). Drag-install works either way.
 
 Pre-commit is optional: `brew install lefthook && lefthook install` wires `lefthook.yml` to run `make lint` on every commit and block style violations. Lefthook is **not** guaranteed installed in CI/agent environments — run `make lint` manually before commits and handoffs (the reliable path).
 
