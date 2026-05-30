@@ -26,5 +26,27 @@
 	<true/>
 	<key>NSHumanReadableCopyright</key>
 	<string>© 2026 Andy Wu. MIT License.</string>
+	<!-- Sparkle auto-update (Epic 1.6.4 — skeleton only, OFF in v0).
+	     Sparkle is linked into the app, but these keys are intentionally
+	     inert: automatic checks are disabled and no live feed URL is set,
+	     so the app makes NO update network calls on launch. The app also
+	     never instantiates SPUStandardUpdaterController. See
+	     docs/RELEASING-sparkle.md for the deferred enablement procedure. -->
+	<key>SUEnableAutomaticChecks</key>
+	<false/>
+	<!-- PLACEHOLDER. Filled at release time with the base64 EdDSA PUBLIC key
+	     emitted by Sparkle's bin/generate_keys. The matching PRIVATE key lives
+	     only in the macOS login Keychain on the release machine and is NEVER
+	     committed (.gitignore blocks sparkle_ed_priv.key). Until enablement,
+	     this stays a placeholder and no update is ever verified/installed. -->
+	<key>SUPublicEDKey</key>
+	<string>REPLACE_WITH_SPARKLE_EDDSA_PUBLIC_KEY_AT_RELEASE</string>
+	<!-- PLACEHOLDER / DEFERRED. No live appcast endpoint exists yet, so the
+	     feed URL is intentionally left as a non-resolving placeholder and
+	     automatic checks are OFF (above) — Sparkle never fetches it in v0.
+	     At enablement, point this at the published appcast.xml (see the
+	     release/appcast.xml template). -->
+	<key>SUFeedURL</key>
+	<string>https://REPLACE_AT_RELEASE.example.com/appcast.xml</string>
 </dict>
 </plist>

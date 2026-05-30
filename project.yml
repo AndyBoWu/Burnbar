@@ -5,6 +5,15 @@ options:
     macOS: "14.0"
   createIntermediateGroups: true
   groupSortPosition: top
+# Sparkle auto-update framework (Epic 1.6.4 — skeleton only).
+# Sparkle is LINKED + embedded so the release plumbing is in place, but
+# auto-update is OFF in v0: no SPUStandardUpdaterController is instantiated,
+# no live SUFeedURL, and no update checks (SUEnableAutomaticChecks = NO in
+# Info.plist). Enablement is deferred — see docs/RELEASING-sparkle.md.
+packages:
+  Sparkle:
+    url: https://github.com/sparkle-project/Sparkle
+    from: 2.6.0
 settings:
   base:
     SWIFT_VERSION: "6.0"
@@ -39,6 +48,8 @@ targets:
     dependencies:
       - target: BurnbarCore
         embed: true
+      # Sparkle is linked + embedded but inert in v0 (auto-update off).
+      - package: Sparkle
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: xyz.andybowu.Burnbar
