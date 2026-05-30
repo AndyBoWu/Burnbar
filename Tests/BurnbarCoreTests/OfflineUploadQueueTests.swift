@@ -175,7 +175,7 @@ final class OfflineUploadQueueTests: XCTestCase {
 
         // Succeed on the first item, then the connection drops mid-drain (throw).
         await XCTAssertThrowsErrorAsync(
-            try await queue.drain { item in
+            try queue.drain { item in
                 if item.date == "2026-05-28" { throw CutNetwork() }
                 return true
             }
@@ -244,8 +244,8 @@ final class OfflineUploadQueueTests: XCTestCase {
 extension XCTestCase {
     /// `XCTAssertThrowsError` for an `async` autoclosure. Fails if `expression`
     /// completes without throwing.
-    func XCTAssertThrowsErrorAsync<T>(
-        _ expression: @autoclosure () async throws -> T,
+    func XCTAssertThrowsErrorAsync(
+        _ expression: @autoclosure () async throws -> some Any,
         _ message: @autoclosure () -> String = "",
         file: StaticString = #filePath,
         line: UInt = #line,
