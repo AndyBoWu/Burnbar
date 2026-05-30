@@ -572,6 +572,11 @@ private struct LeaderboardAccountSection: View {
     /// confirm per the 3.2.5 Definition of Done.
     @State private var confirmingRevoke = false
 
+    /// Drives the "Delete all my data" confirmation dialog. Deletion is destructive
+    /// and irreversible (it erases the user's server-side leaderboard rows), so it
+    /// is gated behind an explicit confirm per the 3.5.2 Definition of Done.
+    @State private var confirmingDelete = false
+
     var body: some View {
         Section {
             switch auth.state {
@@ -621,6 +626,24 @@ private struct LeaderboardAccountSection: View {
                     + "You'll need to sign in again to publish to the leaderboard."
             )
         }
+        // Deleting all data is destructive and irreversible (it erases the user's
+        // server-side leaderboard rows), so it is gated behind an explicit
+        // confirmation per the 3.5.2 Definition of Done.
+        .confirmationDialog(
+            "Delete all your leaderboard data?",
+            isPresented: $confirmingDelete,
+            titleVisibility: .visible
+        ) {
+            Button("Delete all my data", role: .destructive) {
+                Task { await auth.deleteAllData() }
+            }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text(
+                "This permanently erases all of your data from the leaderboard and signs you out. "
+                    + "This can't be undone. You can sign in again afterwards to start fresh."
+            )
+        }
     }
 
     private var signedOutRow: some View {
@@ -653,14 +676,21 @@ private struct LeaderboardAccountSection: View {
     }
 
     private var signedInRow: some View {
-        HStack {
-            Label("Signed in to GitHub", systemImage: "checkmark.circle.fill")
-                .foregroundStyle(.green)
-            Spacer()
-            // "Sign out" clears only the local Keychain token; "Revoke access"
-            // additionally invalidates it at GitHub (behind a confirm).
-            Button("Sign out") { auth.signOut() }
-            Button("Revoke access", role: .destructive) { confirmingRevoke = true }
+        VStack(alignment: .leading, spacing: 8) {
+            HStack {
+                Label("Signed in to GitHub", systemImage: "checkmark.circle.fill")
+                    .foregroundStyle(.green)
+                Spacer()
+                // "Sign out" clears only the local Keychain token; "Revoke access"
+                // additionally invalidates it at GitHub (behind a confirm).
+                Button("Sign out") { auth.signOut() }
+                Button("Revoke access", role: .destructive) { confirmingRevoke = true }
+            }
+            // "Delete all my data" goes further than revoke: it erases the user's
+            // server-side leaderboard rows *and* clears local credentials + opt-in
+            // (behind a confirm), per the 3.5.2 Definition of Done.
+            Button("Delete all my data", role: .destructive) { confirmingDelete = true }
+                .help("Permanently erase all your leaderboard data and sign out.")
         }
     }
 

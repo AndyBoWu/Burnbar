@@ -59,4 +59,20 @@ public enum UploadPreferences {
         }
         return login
     }
+
+    /// Reset all leaderboard state to its just-installed baseline: clear the opt-in
+    /// consent flag, the last-upload timestamp, and the persisted GitHub login.
+    ///
+    /// This is the local teardown half of the "delete all my data" flow
+    /// (sub-ticket 3.5.2): after the server has erased the user's rows and the
+    /// Keychain token is cleared, removing these keys leaves no stale opt-in or
+    /// identity behind, so ``isOptedIn(in:)`` reads `false` again and the user can
+    /// re-join cleanly. Removing (not just zeroing) the opt-in key restores the
+    /// fresh-install default, and clears the persisted login so no identity lingers
+    /// in `UserDefaults` after deletion.
+    public static func reset(in defaults: UserDefaults = .standard) {
+        defaults.removeObject(forKey: optedInKey)
+        defaults.removeObject(forKey: lastUploadAtKey)
+        defaults.removeObject(forKey: githubLoginKey)
+    }
 }
