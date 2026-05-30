@@ -1,0 +1,28 @@
+# Gitleaks config for Burnbar (https://github.com/gitleaks/gitleaks).
+#
+# Extends the built-in ruleset (covers GitHub tokens, AWS keys, private keys,
+# Stripe/Slack tokens, JWTs, etc.) and narrowly allowlists only values that are
+# public by design — NOT whole paths, so a real secret accidentally written into
+# a test or fixture is still caught.
+#
+# Run: `gitleaks git` (full history) or `gitleaks git --staged` (pre-commit).
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Burnbar values that are public by design or are documented placeholders"
+
+# Narrow, value-level allowlist only:
+# - The GitHub App client_id is PUBLIC by design (the client *secret* lives only
+#   in the Worker env, never in this repo).
+# - REPLACE_AFTER_* / REPLACE_WITH_* are documented placeholders, not secrets.
+# No path-based allowlist: test fixtures and *Tests.swift are scanned like any
+# other file, so a real leaked credential there is not silently skipped. If a
+# fixture ever needs a fake token that trips a rule, allow it inline with a
+# `gitleaks:allow` comment on that specific line.
+regexes = [
+  '''Iv23liZtq4q4ukHeLwsh''',
+  '''REPLACE_AFTER_[A-Za-z0-9_]+''',
+  '''REPLACE_WITH_RELEASE_ZIP_SHA256''',
+]
