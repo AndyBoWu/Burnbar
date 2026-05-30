@@ -38,7 +38,7 @@ public enum UploadPayloadValidator: Sendable {
     /// that adding a field to some upstream model can never widen this allowlist
     /// by accident. Widening it is a conscious, reviewed change here, and per
     /// CLAUDE.md only non-identifying fields may ever be added.
-    public static let allowedKeys: Set<String> = ["date", "provider", "tokens", "cost_usd"]
+    public static let allowedKeys: Set = ["date", "provider", "tokens", "cost_usd"]
 
     /// The two providers Burnbar supports, as they appear on the wire. Enforces
     /// the two-provider hard cap (CLAUDE.md constraint #2) at the gate: a

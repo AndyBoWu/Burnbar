@@ -17,8 +17,8 @@ final class UploadPayloadValidatorTests: XCTestCase {
         [
             "date": "2026-05-30",
             "provider": "claude",
-            "tokens": 12_345,
-            "cost_usd": 1.23,
+            "tokens": 12345,
+            "cost_usd": 1.23
         ]
     }
 
