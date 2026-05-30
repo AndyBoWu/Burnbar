@@ -94,7 +94,7 @@ public struct SyncLog: Sendable {
     /// ISO-8601 UTC timestamp (e.g. `2026-05-30T14:03:22Z`) — fixed, locale- and
     /// timezone-independent so log lines are stable and machine-parseable.
     static func timestamp(_ date: Date) -> String {
-        Self.formatter.string(from: date)
+        formatter.string(from: date)
     }
 
     /// Configured once at init and never mutated afterwards, so sharing it across

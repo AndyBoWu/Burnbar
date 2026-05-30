@@ -133,7 +133,10 @@ final class SyncLogTests: XCTestCase {
 
         XCTAssertEqual(captured.lines.count, 1)
         XCTAssertEqual(captured.files.first, log.fileURL)
-        XCTAssertEqual(captured.lines.first, "\(SyncLog.timestamp(Date(timeIntervalSince1970: 0))) force-resync start\n")
+        XCTAssertEqual(
+            captured.lines.first,
+            "\(SyncLog.timestamp(Date(timeIntervalSince1970: 0))) force-resync start\n"
+        )
     }
 
     // MARK: - Helpers
