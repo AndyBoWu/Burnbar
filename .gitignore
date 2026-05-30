@@ -60,3 +60,6 @@ secrets/
 
 # Logs
 *.log
+
+# Claude Code worktrees / local agent state
+.claude/
