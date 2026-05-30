@@ -8,6 +8,10 @@ import {
   type PublicProfile,
 } from "@/app/lib/api";
 
+// Dynamic per-login route (no generateStaticParams), so it runs on Cloudflare
+// Pages' Edge Runtime rather than being prerendered. Required by next-on-pages.
+export const runtime = "edge";
+
 // Refresh each profile every 5 minutes (matches the fetch revalidation).
 export const revalidate = 300;
 
