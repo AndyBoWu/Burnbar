@@ -19,6 +19,10 @@ struct PopoverContentView: View {
             header
             modePicker
 
+            if store.viewMode == .allMacs {
+                syncingBadge
+            }
+
             if hasAnyData, let today = store.today {
                 ForEach(Provider.allCases) { provider in
                     ProviderTileView(provider: provider, model: ProviderTileModel.make(provider: provider, from: today))
@@ -99,6 +103,26 @@ struct PopoverContentView: View {
         }
         .pickerStyle(.segmented)
         .labelsHidden()
+    }
+
+    /// "N Macs syncing" badge (2.4.2), shown only in All-Macs mode. The count is
+    /// `store.machineCount` — the number of machines reconciled into the combined
+    /// total — so the badge and the summed burn it sits above always agree. The
+    /// `SyncingBadge` helper owns the singular/plural wording.
+    ///
+    /// Note: the expandable per-machine breakdown (2.4.3) is intentionally not built
+    /// here — this is the badge + count only, per the ticket's scope split.
+    private var syncingBadge: some View {
+        HStack(spacing: 4) {
+            Image(systemName: "arrow.triangle.2.circlepath")
+                .font(.caption2)
+            Text(SyncingBadge.text(machineCount: store.machineCount))
+                .font(.caption2.weight(.medium))
+        }
+        .foregroundStyle(.secondary)
+        .padding(.horizontal, 8)
+        .padding(.vertical, 3)
+        .background(Color.secondary.opacity(0.10), in: Capsule())
     }
 
     private var emptyState: some View {
