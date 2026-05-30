@@ -1,0 +1,25 @@
+name = "burnbar-api"
+main = "src/index.ts"
+compatibility_date = "2026-01-01"
+
+# Local dev / `wrangler d1 ... --local` / vitest all use a local SQLite D1 and
+# need NO Cloudflare account. The real database_ids below are filled in after
+# running `wrangler d1 create burnbar-staging` / `... burnbar-prod` (which DO
+# need an account). See web/README.md.
+
+[[d1_databases]]
+binding = "DB"
+database_name = "burnbar-local"
+database_id = "local"
+
+[env.staging]
+[[env.staging.d1_databases]]
+binding = "DB"
+database_name = "burnbar-staging"
+database_id = "REPLACE_AFTER_wrangler_d1_create_burnbar-staging"
+
+[env.prod]
+[[env.prod.d1_databases]]
+binding = "DB"
+database_name = "burnbar-prod"
+database_id = "REPLACE_AFTER_wrangler_d1_create_burnbar-prod"
