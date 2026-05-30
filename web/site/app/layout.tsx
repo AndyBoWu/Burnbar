@@ -2,10 +2,34 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import "./globals.css";
 
+const SITE_NAME = "Burnbar";
+const SITE_DESCRIPTION =
+  "The global leaderboard for Claude Code and OpenAI Codex token usage.";
+
 export const metadata: Metadata = {
+  // Absolute base for OG/Twitter image and canonical URL resolution. Required
+  // for `opengraph-image` and relative `alternates` to resolve to full URLs.
+  metadataBase: new URL("https://burnbar.andybowu.xyz"),
   title: "Burnbar Leaderboard",
-  description:
-    "The global leaderboard for Claude Code and OpenAI Codex token usage.",
+  description: SITE_DESCRIPTION,
+  applicationName: SITE_NAME,
+  alternates: {
+    canonical: "/",
+  },
+  openGraph: {
+    type: "website",
+    siteName: SITE_NAME,
+    title: "Burnbar Leaderboard",
+    description: SITE_DESCRIPTION,
+    url: "/",
+    // The default opengraph-image (app/opengraph-image.tsx) is attached
+    // automatically by Next; per-page images override it where present.
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Burnbar Leaderboard",
+    description: SITE_DESCRIPTION,
+  },
 };
 
 export default function RootLayout({
