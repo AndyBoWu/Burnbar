@@ -61,12 +61,12 @@ Leaderboard upload (M3) aggregates *across* machines first (via the M2 reconcile
 - `make lint` — SwiftFormat (`--lint`) + SwiftLint (`--strict`); non-zero exit on any violation (1.1.2). Requires `brew install swiftlint swiftformat`.
 - `make format` — auto-apply SwiftFormat + `swiftlint --fix` in place (1.1.2).
 - `./Scripts/package_app.sh` — Release build → ad-hoc sign → `dist/Burnbar-vX.Y.Z.zip` (prints sha256) (1.6.1). v0 ad-hoc only (no hardened runtime); right-click → Open on first launch.
+- `./Scripts/install_launchagent.sh [app] | --uninstall` — install/remove the login LaunchAgent (`~/Library/LaunchAgents/xyz.andybowu.Burnbar.plist`) (1.6.3).
 
 Pre-commit is optional: `brew install lefthook && lefthook install` wires `lefthook.yml` to run `make lint` on every commit and block style violations. Lefthook is **not** guaranteed installed in CI/agent environments — run `make lint` manually before commits and handoffs (the reliable path).
 
 _Planned (each lands with its sub-ticket; update this section in the same PR):_
 
 - `./Scripts/update_cask.sh` — bump Homebrew tap cask version + sha256 after a release (1.6.5)
-- `./Scripts/install_launchagent.sh` — install LaunchAgent for login auto-start (1.6.3)
 
 Update this section in the same PR that introduces each script.
