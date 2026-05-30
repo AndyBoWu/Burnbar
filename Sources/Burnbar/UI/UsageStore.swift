@@ -45,6 +45,19 @@ final class UsageStore {
     /// machine's local view contributes no cross-device machines".
     private(set) var machineCount = 0
 
+    /// Per-machine "today" breakdown backing the expandable panel (2.4.3): one
+    /// ``MachineBreakdownRow`` per machine summed into the combined All-Macs total,
+    /// sorted by today's burn descending. Built off the main actor from the same
+    /// reconciled `byMachine` map the badge counts, so the panel and badge always
+    /// agree on which machines contributed. Empty in This-Mac mode (the panel is
+    /// hidden there).
+    private(set) var machineBreakdown: [MachineBreakdownRow] = []
+
+    /// Whether the per-machine breakdown panel is expanded (2.4.3). Pure view
+    /// state — toggled by tapping the syncing badge/disclosure; it triggers no
+    /// reload, so expanding is instant and never re-reads iCloud.
+    var isBreakdownExpanded = false
+
     /// Whether the popover shows this machine only or every machine combined
     /// (2.4.1). Initialized from `UserDefaults`; assigning a new value persists
     /// the choice and reloads from the matching data source in place, so the
@@ -63,6 +76,10 @@ final class UsageStore {
     private let aggregator: TimeWindowAggregator
     private let iCloudContainer: ICloudContainer
     private let reconciler: Reconciler
+    private let breakdownBuilder: MachineBreakdownBuilder
+    private let labelStore: MachineLabel
+    private let registry: MachineRegistry
+    private let thisMachineID: String
     private let defaults: UserDefaults
 
     init(
@@ -72,6 +89,10 @@ final class UsageStore {
         aggregator: TimeWindowAggregator = TimeWindowAggregator(),
         iCloudContainer: ICloudContainer = ICloudContainer(),
         reconciler: Reconciler = Reconciler(),
+        breakdownBuilder: MachineBreakdownBuilder = MachineBreakdownBuilder(),
+        labelStore: MachineLabel = MachineLabel(),
+        registry: MachineRegistry = MachineRegistry(),
+        thisMachineID: String = MachineIdentity.current(),
         defaults: UserDefaults = .standard
     ) {
         self.claude = claude
@@ -80,6 +101,10 @@ final class UsageStore {
         self.aggregator = aggregator
         self.iCloudContainer = iCloudContainer
         self.reconciler = reconciler
+        self.breakdownBuilder = breakdownBuilder
+        self.labelStore = labelStore
+        self.registry = registry
+        self.thisMachineID = thisMachineID
         self.defaults = defaults
         viewMode = ViewMode.fromStorage(defaults.string(forKey: ViewMode.storageKey))
     }
@@ -95,6 +120,12 @@ final class UsageStore {
         isLoading = true
         let providers = ProviderPreferences.load(from: defaults)
         let mode = viewMode
+        // Snapshot the (non-`Sendable`, `UserDefaults`-backed) label sources on the
+        // main actor so the off-main All-Macs loader gets a plain `Sendable` value.
+        // The local Mac's friendly name wins for its own row, mirroring the Devices
+        // tab; every other machine takes its `MachineRegistry` label.
+        let labels = labelSnapshot()
+        let thisMachineID = thisMachineID
         Task {
             let snapshot: Snapshot = switch mode {
             case .thisMac:
@@ -110,7 +141,12 @@ final class UsageStore {
                     iCloudContainer: iCloudContainer,
                     reconciler: reconciler,
                     calculator: calculator,
-                    aggregator: aggregator
+                    aggregator: aggregator,
+                    breakdown: BreakdownInputs(
+                        builder: breakdownBuilder,
+                        labels: labels,
+                        thisMachineID: thisMachineID
+                    )
                 )
             }
             today = snapshot.today
@@ -118,10 +154,24 @@ final class UsageStore {
             month = snapshot.month
             warnings = snapshot.warnings
             machineCount = snapshot.machineCount
+            machineBreakdown = snapshot.machineBreakdown
             lastUpdated = Date()
             isLoading = false
             NotificationCenter.default.post(name: .burnbarDidRefresh, object: nil)
         }
+    }
+
+    /// `[machine_id: label]` snapshot of the friendly names: the local Mac's
+    /// `MachineLabel` for its own id, plus every registered machine's
+    /// `MachineRegistry` label. Read on the main actor (the stores wrap
+    /// `UserDefaults`) so the off-main breakdown build gets a `Sendable` map.
+    private func labelSnapshot() -> [String: String] {
+        var labels: [String: String] = [:]
+        for entry in registry.all() {
+            labels[entry.id] = entry.label
+        }
+        labels[thisMachineID] = labelStore.label
+        return labels
     }
 
     private struct Snapshot {
@@ -132,6 +182,9 @@ final class UsageStore {
         /// Machines contributing to this snapshot (2.4.2). `0` for the local path
         /// (no cross-device fan-out); the count of reconciled machines for All Macs.
         var machineCount = 0
+        /// Per-machine "today" rows for the expandable panel (2.4.3). Empty for the
+        /// local path; one row per reconciled machine for All Macs.
+        var machineBreakdown: [MachineBreakdownRow] = []
     }
 
     /// Collapse priced records into the three windows. Shared tail of both load
@@ -144,6 +197,7 @@ final class UsageStore {
         from records: [UsageRecord],
         warnings: [String],
         machineCount: Int,
+        machineBreakdown: [MachineBreakdownRow] = [],
         calculator: CostCalculator,
         aggregator: TimeWindowAggregator
     ) -> Snapshot {
@@ -154,7 +208,8 @@ final class UsageStore {
             week: windows[.week],
             month: windows[.month],
             warnings: warnings,
-            machineCount: machineCount
+            machineCount: machineCount,
+            machineBreakdown: machineBreakdown
         )
     }
 
@@ -209,11 +264,22 @@ final class UsageStore {
     /// total across devices. When iCloud is unavailable (Drive off / signed out)
     /// the combined view is empty and a single non-fatal warning explains why,
     /// matching the local path's "missing source is a warning, not a crash" rule.
+    /// The cross-device inputs the per-machine breakdown (2.4.3) needs, bundled so
+    /// the All-Macs loader stays a tidy parameter list. All `Sendable`: the builder
+    /// is stateless, the label map and id are plain values snapshotted on the main
+    /// actor before the off-main load.
+    private struct BreakdownInputs {
+        let builder: MachineBreakdownBuilder
+        let labels: [String: String]
+        let thisMachineID: String
+    }
+
     private nonisolated static func loadAllMacs(
         iCloudContainer: ICloudContainer,
         reconciler: Reconciler,
         calculator: CostCalculator,
-        aggregator: TimeWindowAggregator
+        aggregator: TimeWindowAggregator,
+        breakdown: BreakdownInputs
     ) async -> Snapshot {
         let location = iCloudContainer.resolve()
         guard let directory = location.url else {
@@ -227,13 +293,34 @@ final class UsageStore {
 
         let byMachine = MultiMachineReader(directory: directory).readAll()
         let reconciled = reconciler.merge(byMachine)
+
+        // Flag (don't drop) stale machines so the panel can dim them — the combined
+        // total above is unchanged; this only annotates the per-machine rows. The
+        // registry read is `UserDefaults` (thread-safe), so constructing it here off
+        // the main actor is safe.
+        let staleIDs = StaleMachineDetector().staleMachineIDs(
+            in: reconciled.byMachine,
+            registry: MachineRegistry(),
+            now: Date()
+        )
+        let breakdownRows = breakdown.builder.rows(
+            from: reconciled.byMachine,
+            context: MachineBreakdownBuilder.Context(
+                thisMachineID: breakdown.thisMachineID,
+                labels: breakdown.labels,
+                staleIDs: staleIDs
+            )
+        )
+
         // The badge count (2.4.2) is the number of machines whose records were
         // reconciled into `combined` — `byMachine` is passed through verbatim, so
-        // its `count` is exactly the machines summed into the displayed total.
+        // its `count` is exactly the machines summed into the displayed total. The
+        // breakdown (2.4.3) splits that same total back per machine.
         return snapshot(
             from: reconciled.combined,
             warnings: [],
             machineCount: reconciled.byMachine.count,
+            machineBreakdown: breakdownRows,
             calculator: calculator,
             aggregator: aggregator
         )
