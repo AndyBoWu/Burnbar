@@ -161,7 +161,7 @@ public enum PricingTable {
             outputPerMTok: 14,
             cacheReadPerMTok: 0.175,
             cacheCreatePerMTok: 0
-        ),
+        )
     ]
 
     /// Returns the pricing for an exact model id, or `nil` if the model is not in

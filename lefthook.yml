@@ -1,0 +1,20 @@
+# Lefthook git hooks for Burnbar — OPTIONAL.
+#
+# Lefthook is not guaranteed installed in CI/agent environments. The reliable
+# path is `make lint`, which this hook simply delegates to. To enable locally:
+#
+#   brew install lefthook   # or: brew install swiftlint swiftformat lefthook
+#   lefthook install        # wires up .git/hooks
+#
+# Once installed, every `git commit` runs `make lint` and blocks the commit if
+# SwiftFormat or SwiftLint reports any violation. If you skip Lefthook, run
+# `make lint` by hand before committing (see CLAUDE.md "Workflow expectations").
+
+pre-commit:
+  parallel: false
+  commands:
+    lint:
+      # Only run when Swift sources (or the lint config) are staged.
+      glob: "*.{swift,swiftlint.yml,swiftformat}"
+      run: make lint
+      fail_text: "Style violations found — run 'make format' then re-stage."

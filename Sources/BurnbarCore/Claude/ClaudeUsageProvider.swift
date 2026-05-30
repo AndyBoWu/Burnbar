@@ -114,7 +114,7 @@ public struct ClaudeUsageProvider: Sendable {
         formatter.calendar = calendar
         formatter.timeZone = calendar.timeZone
         formatter.dateFormat = "yyyy-MM-dd"
-        self.dayFormatter = formatter
+        dayFormatter = formatter
     }
 
     /// Produces the merged Claude usage timeline: cache history (every day before

@@ -93,8 +93,8 @@ public struct JSONLDeltaScanner: Sendable {
     ) {
         self.projectsDirectory =
             projectsDirectory
-            ?? FileManager.default.homeDirectoryForCurrentUser
-            .appendingPathComponent(".claude/projects", isDirectory: true)
+                ?? FileManager.default.homeDirectoryForCurrentUser
+                .appendingPathComponent(".claude/projects", isDirectory: true)
         self.calendar = calendar
         self.now = now
     }
@@ -130,7 +130,7 @@ public struct JSONLDeltaScanner: Sendable {
     private func todaysJSONLFiles(modifiedOnOrAfter cutoff: Date) -> [URL] {
         let fileManager = FileManager.default
         let resourceKeys: Set<URLResourceKey> = [
-            .contentModificationDateKey, .isRegularFileKey,
+            .contentModificationDateKey, .isRegularFileKey
         ]
 
         guard
@@ -188,8 +188,8 @@ public struct JSONLDeltaScanner: Sendable {
                 continue
             }
             guard object.type == "assistant",
-                let message = object.message,
-                let usage = message.usage
+                  let message = object.message,
+                  let usage = message.usage
             else { continue }
 
             let model = message.model ?? "unknown"
@@ -257,7 +257,7 @@ private struct LineSequence: Sequence, IteratorProtocol {
     mutating func next() -> Data? {
         while true {
             if let relativeIndex = buffer[cursor...].firstIndex(of: Self.newline) {
-                let line = Data(buffer[cursor..<relativeIndex])
+                let line = Data(buffer[cursor ..< relativeIndex])
                 cursor = relativeIndex + 1
                 compactIfNeeded()
                 return line

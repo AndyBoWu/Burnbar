@@ -20,6 +20,7 @@ import XCTest
 /// "today" and the JSONL midnight cutoff are fully deterministic and never read
 /// the developer's real `~/.claude` directory.
 final class ClaudeUsageProviderFixtureCasesTests: XCTestCase {
+
     // MARK: - Deterministic time
 
     /// UTC calendar so the formatted "today" key and the scanner's local-midnight
@@ -131,7 +132,7 @@ final class ClaudeUsageProviderFixtureCasesTests: XCTestCase {
     /// `nil` breakdown.
     func testCase_singleModel_todayDeltaMergedWithCacheHistory() throws {
         try installTodayDelta(fixture: "single-model.jsonl")
-        let records = try provider(cache: try fixtureCacheReader(), scanner: scanner()).usageRecords()
+        let records = try provider(cache: fixtureCacheReader(), scanner: scanner()).usageRecords()
 
         XCTAssertTrue(records.allSatisfy { $0.provider == .claude })
         XCTAssertTrue(records.allSatisfy { $0.costUSD == nil }, "costing is applied later (Epic 1.4)")
@@ -145,12 +146,12 @@ final class ClaudeUsageProviderFixtureCasesTests: XCTestCase {
         let todayOpus = try XCTUnwrap(todayRecords.first)
         XCTAssertEqual(todayOpus.inputTokens, 10)
         XCTAssertEqual(todayOpus.outputTokens, 200)
-        XCTAssertEqual(todayOpus.cacheReadTokens, 50_000)
-        XCTAssertEqual(todayOpus.cacheCreationTokens, 31_924)
+        XCTAssertEqual(todayOpus.cacheReadTokens, 50000)
+        XCTAssertEqual(todayOpus.cacheCreationTokens, 31924)
 
         // DoD (1.2.4 carried into 1.2.5): today's total equals the manual sum of
         // today's `message.usage`.
-        let manual = (2 + 8) + (137 + 63) + (0 + 50_000) + (31_824 + 100)
+        let manual = (2 + 8) + (137 + 63) + (0 + 50000) + (31824 + 100)
         XCTAssertEqual(todayOpus.totalTokens, manual)
 
         // Cache history is present and untouched by the delta: a historical opus
@@ -173,7 +174,7 @@ final class ClaudeUsageProviderFixtureCasesTests: XCTestCase {
     /// of the cache history.
     func testCase_multiModel_perModelTodayRecordsMergedWithCacheHistory() throws {
         try installTodayDelta(fixture: "multi-model.jsonl")
-        let records = try provider(cache: try fixtureCacheReader(), scanner: scanner()).usageRecords()
+        let records = try provider(cache: fixtureCacheReader(), scanner: scanner()).usageRecords()
 
         XCTAssertTrue(records.allSatisfy { $0.provider == .claude })
 
@@ -191,7 +192,7 @@ final class ClaudeUsageProviderFixtureCasesTests: XCTestCase {
         XCTAssertEqual(opus.inputTokens, 10)
         XCTAssertEqual(opus.outputTokens, 20)
         XCTAssertEqual(opus.cacheCreationTokens, 200)
-        XCTAssertEqual(opus.cacheReadTokens, 1_000)
+        XCTAssertEqual(opus.cacheReadTokens, 1000)
 
         // sonnet: two lines summed; the second omits cache fields (→ 0).
         let sonnet = try XCTUnwrap(todayRecords.first { $0.model == "claude-sonnet-4-6" })
@@ -208,19 +209,19 @@ final class ClaudeUsageProviderFixtureCasesTests: XCTestCase {
         // Today's grand total equals the manual sum across all three models.
         let todayTotal = todayRecords.reduce(0) { $0 + $1.totalTokens }
         let manual =
-            (10 + 20 + 200 + 1_000) // opus
-            + (12 + 43 + 300 + 0) // sonnet
-            + (1 + 1) // unknown
+            (10 + 20 + 200 + 1000) // opus
+                + (12 + 43 + 300 + 0) // sonnet
+                + (1 + 1) // unknown
         XCTAssertEqual(todayTotal, manual)
 
         // Cache history co-exists: a multi-model history day exposes each of its
         // per-model aggregates as its own record (aggregate → inputTokens).
         let histDay = "2026-04-24"
         XCTAssertEqual(records.first { $0.day == histDay && $0.model == "claude-opus-4-7" }?.inputTokens, 100_000)
-        XCTAssertEqual(records.first { $0.day == histDay && $0.model == "claude-sonnet-4-6" }?.inputTokens, 50_000)
+        XCTAssertEqual(records.first { $0.day == histDay && $0.model == "claude-sonnet-4-6" }?.inputTokens, 50000)
         XCTAssertEqual(
             records.first { $0.day == histDay && $0.model == "claude-haiku-4-5-20251001" }?.inputTokens,
-            2_000
+            2000
         )
     }
 }

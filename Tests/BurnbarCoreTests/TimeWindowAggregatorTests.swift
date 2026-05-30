@@ -2,9 +2,9 @@ import XCTest
 @testable import BurnbarCore
 
 final class TimeWindowAggregatorTests: XCTestCase {
-    // A deterministic calendar pinned to a US timezone (observes DST) with a
-    // Sunday firstWeekday, so bucket boundaries are reproducible regardless of
-    // the host machine's locale.
+    /// A deterministic calendar pinned to a US timezone (observes DST) with a
+    /// Sunday firstWeekday, so bucket boundaries are reproducible regardless of
+    /// the host machine's locale.
     private func usCalendar() -> Calendar {
         var cal = Calendar(identifier: .gregorian)
         cal.timeZone = TimeZone(identifier: "America/New_York")!
@@ -56,8 +56,8 @@ final class TimeWindowAggregatorTests: XCTestCase {
         let records = [
             record(.claude, "claude-opus-4-7", "2026-05-27", input: 100, output: 10, cost: 1.0), // today
             record(.claude, "claude-opus-4-7", "2026-05-26", input: 200, output: 20, cost: 2.0), // this week, not today
-            record(.codex, "gpt-5", "2026-05-01", input: 50, cost: 0.5),                          // this month, not week
-            record(.claude, "claude-sonnet-4-6", "2026-04-30", input: 999, cost: 9.99)            // prior month, in none
+            record(.codex, "gpt-5", "2026-05-01", input: 50, cost: 0.5), // this month, not week
+            record(.claude, "claude-sonnet-4-6", "2026-04-30", input: 999, cost: 9.99) // prior month, in none
         ]
 
         let result = agg.aggregate(records, now: now)
@@ -75,11 +75,11 @@ final class TimeWindowAggregatorTests: XCTestCase {
         let now = noon(2026, 5, 27, cal) // week = Sun May 24 .. Sat May 30
 
         let records = [
-            record(.claude, "m", "2026-05-23", input: 1),  // Sat before — excluded
+            record(.claude, "m", "2026-05-23", input: 1), // Sat before — excluded
             record(.claude, "m", "2026-05-24", input: 10), // Sun — included (week start)
             record(.claude, "m", "2026-05-27", input: 100), // today — included
             record(.claude, "m", "2026-05-30", input: 1000), // Sat — included (week end)
-            record(.claude, "m", "2026-05-31", input: 1)    // next Sun — excluded
+            record(.claude, "m", "2026-05-31", input: 1) // next Sun — excluded
         ]
 
         let week = agg.aggregate(records, window: .week, now: now)
@@ -92,10 +92,10 @@ final class TimeWindowAggregatorTests: XCTestCase {
         let now = noon(2026, 5, 27, cal)
 
         let records = [
-            record(.claude, "m", "2026-04-30", input: 1),     // April — excluded
-            record(.claude, "m", "2026-05-01", input: 10),    // month start — included
-            record(.claude, "m", "2026-05-31", input: 1000),  // month end — included
-            record(.claude, "m", "2026-06-01", input: 1)      // June — excluded
+            record(.claude, "m", "2026-04-30", input: 1), // April — excluded
+            record(.claude, "m", "2026-05-01", input: 10), // month start — included
+            record(.claude, "m", "2026-05-31", input: 1000), // month end — included
+            record(.claude, "m", "2026-06-01", input: 1) // June — excluded
         ]
 
         let month = agg.aggregate(records, window: .month, now: now)

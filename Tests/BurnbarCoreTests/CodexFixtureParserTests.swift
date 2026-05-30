@@ -11,8 +11,8 @@ final class CodexFixtureParserTests: XCTestCase {
     /// without SPM resource bundling.
     private func fixtureURL(file: StaticString = #filePath) -> URL {
         let testsRoot = URL(fileURLWithPath: "\(file)")
-            .deletingLastPathComponent()      // BurnbarCoreTests/
-            .deletingLastPathComponent()      // Tests/
+            .deletingLastPathComponent() // BurnbarCoreTests/
+            .deletingLastPathComponent() // Tests/
         return testsRoot.appendingPathComponent("Fixtures/Codex/state_5_fixture.sqlite")
     }
 
@@ -23,8 +23,8 @@ final class CodexFixtureParserTests: XCTestCase {
     func testFixtureExistsAndIsUnder20KB() throws {
         let url = fixtureURL()
         XCTAssertTrue(FileManager.default.fileExists(atPath: url.path), "fixture missing at \(url.path)")
-        let size = (try FileManager.default.attributesOfItem(atPath: url.path)[.size] as? Int) ?? .max
-        XCTAssertLessThan(size, 20_000, "fixture must be < 20 KB (was \(size) bytes)")
+        let size = try (FileManager.default.attributesOfItem(atPath: url.path)[.size] as? Int) ?? .max
+        XCTAssertLessThan(size, 20000, "fixture must be < 20 KB (was \(size) bytes)")
     }
 
     func testThreadsReaderGroupsByDayAndModel() throws {

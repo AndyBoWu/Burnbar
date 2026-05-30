@@ -1,0 +1,96 @@
+# SwiftLint configuration for Burnbar.
+# Pragmatic, not maximally strict: catch real issues (force-unwraps in app
+# code, dead code, obvious smells) without fighting the existing clean style.
+# Pairs with .swiftformat; `make lint` runs both.
+
+included:
+  - Sources
+  - Tests
+
+excluded:
+  - build
+  - .build
+  - .claude
+  - Burnbar.xcodeproj
+  - DerivedData
+  - Tests/Fixtures
+
+# Rules that are off by default but worth catching.
+opt_in_rules:
+  - empty_count
+  - empty_string
+  - first_where
+  - contains_over_first_not_nil
+  - last_where
+  - sorted_first_last
+  - toggle_bool
+  - redundant_nil_coalescing
+  - closure_spacing
+  - operator_usage_whitespace
+  - explicit_init
+
+# Noisy / opinionated rules we deliberately turn off.
+disabled_rules:
+  - todo                    # planning markers are expected pre-MVP
+  - trailing_comma          # SwiftFormat owns comma style
+  - opening_brace           # SwiftFormat owns brace placement
+
+# line_length stays an enabled rule but only warns until 120 / errors at 200,
+# and ignores comments, URLs, and interpolated string literals so doc banners,
+# pricing links, and user-facing message strings don't trip it.
+line_length:
+  warning: 120
+  error: 200
+  ignores_comments: true
+  ignores_urls: true
+  ignores_interpolated_strings: true
+
+identifier_name:
+  min_length: 2             # allow short loop/closure vars like `id`, `db`
+  excluded:
+    # Short, conventional local/loop bindings used throughout the existing code.
+    - id
+    - db
+    - to
+    - up
+    - r                     # short-lived `record(...)` result in cost tests
+    - f                     # local DateFormatter
+    - p                     # provider in aggregation folds
+    - m                     # model in aggregation folds
+    - c                     # calendar/component in tests
+    # Claude JSONL wire-schema keys (snake_case): these are Decodable property
+    # names that map 1:1 to the on-disk JSON. Renaming would break parsing —
+    # they must stay verbatim (see JSONLDeltaScanner.Usage).
+    - input_tokens
+    - output_tokens
+    - cache_read_input_tokens
+    - cache_creation_input_tokens
+
+type_name:
+  min_length: 3
+  max_length:
+    warning: 50
+    error: 60
+
+function_body_length:
+  warning: 80
+  error: 150
+
+type_body_length:
+  warning: 350
+  error: 500
+
+file_length:
+  warning: 600
+  error: 1000
+  ignore_comment_only_lines: true
+
+cyclomatic_complexity:
+  warning: 15
+  error: 25
+
+# Tests legitimately force-unwrap fixtures and use long XCTest bodies.
+force_try:
+  severity: warning
+
+reporter: "xcode"
