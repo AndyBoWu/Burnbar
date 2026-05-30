@@ -129,3 +129,36 @@ export async function deleteMe(db: D1Database, githubId: number): Promise<void> 
   await db.prepare('DELETE FROM daily_usage WHERE github_id = ?').bind(githubId).run()
   await db.prepare('DELETE FROM users WHERE github_id = ?').bind(githubId).run()
 }
+
+/** Days of daily_usage history retained for opted-OUT users (3.5.3 retention policy). */
+export const RETENTION_DAYS = 90
+
+/** Inclusive `YYYY-MM-DD` retention cutoff: rows dated strictly before this are purgeable. */
+export function retentionCutoff(now: Date): string {
+  const cutoff = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() - RETENTION_DAYS))
+  return cutoff.toISOString().slice(0, 10)
+}
+
+/**
+ * Data-retention purge (3.5.3): delete `daily_usage` rows older than
+ * `RETENTION_DAYS` belonging to opted-OUT users (`users.opted_in = 0`).
+ *
+ * Retention rule, by design:
+ *   - `opted_in = 1` → retain indefinitely (never touched here).
+ *   - `opted_in = 0` → purge rows with `date < cutoff` (90 days back).
+ *
+ * Recent opted-out rows and ALL opted-in rows are kept. Returns the number of
+ * rows deleted so the caller can log it.
+ */
+export async function purgeOptedOut(db: D1Database, now: Date): Promise<number> {
+  const cutoff = retentionCutoff(now)
+  const result = await db
+    .prepare(
+      `DELETE FROM daily_usage
+       WHERE date < ?
+         AND github_id IN (SELECT github_id FROM users WHERE opted_in = 0)`,
+    )
+    .bind(cutoff)
+    .run()
+  return result.meta.changes
+}
