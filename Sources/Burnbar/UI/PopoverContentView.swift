@@ -20,6 +20,7 @@ struct PopoverContentView: View {
                 ForEach(Provider.allCases) { provider in
                     ProviderTileView(provider: provider, model: ProviderTileModel.make(provider: provider, from: today))
                 }
+                burnBars
             } else {
                 emptyState
             }
@@ -38,6 +39,40 @@ struct PopoverContentView: View {
         }
         .padding(12)
         .frame(width: 300)
+    }
+
+    /// Weekly + monthly burn bars (1.5.3) fed by the real week/month token
+    /// totals from the aggregator.
+    ///
+    /// Note: the `.fiveHour` window is intentionally NOT wired here. `UsageRecord`
+    /// is day-granular (no sub-day timestamps), so a true rolling 5-hour token
+    /// total is not computable from our data. `BurnBarView` and `ResetClock` both
+    /// support `.fiveHour` so it can be enabled once a finer-grained source
+    /// exists, but rendering it now would show a misleading number.
+    private var burnBars: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("Limits")
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(.secondary)
+
+            if let week = store.week {
+                BurnBarView(
+                    value: week.totalTokens,
+                    limit: BurnBudget.weeklyTokens,
+                    window: .weekly
+                )
+            }
+            if let month = store.month {
+                BurnBarView(
+                    value: month.totalTokens,
+                    limit: BurnBudget.monthlyTokens,
+                    window: .monthly
+                )
+            }
+        }
+        .padding(10)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Color.secondary.opacity(0.06), in: RoundedRectangle(cornerRadius: 8))
     }
 
     private var header: some View {
