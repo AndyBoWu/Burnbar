@@ -17,6 +17,16 @@ public enum ICloudLocation: Equatable, Sendable {
         case .unavailable: return nil
         }
     }
+
+    /// Whether cross-device sync can run from this location. `false` only for
+    /// `.unavailable` (iCloud Drive disabled / signed out), which drives the menu
+    /// bar warning badge (2.5.1).
+    public var isAvailable: Bool {
+        switch self {
+        case .container, .fallback: return true
+        case .unavailable: return false
+        }
+    }
 }
 
 /// Resolves the `Burnbar/` directory inside iCloud Drive, with a defined
