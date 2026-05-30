@@ -55,6 +55,30 @@ Cloudflare zone settings and this Worker:
   the domain again. The Worker does not perform the redirect itself — that is the
   operator's "Always Use HTTPS" zone setting above.
 
+## Domain routing (3.6.2)
+
+`burnbar.andybowu.xyz` serves two things off one hostname:
+
+- **`/api/*` → this API Worker.** Bound by the `routes` entry under `[env.prod]`
+  in `wrangler.toml`:
+  `{ pattern = "burnbar.andybowu.xyz/api/*", zone_name = "andybowu.xyz" }`.
+- **Everything else → Cloudflare Pages** (the Next.js app in `web/site`). The
+  Pages custom domain owns the apex `burnbar.andybowu.xyz/*`; the Worker route
+  is more specific than that catch-all, so `/api/v1/*` reaches the Worker and all
+  non-API paths fall through to Pages.
+
+The route is attached on `npm run deploy:prod` (`wrangler deploy --env prod`).
+Staging has no route — staging is exercised via its `*.workers.dev` URL.
+
+Reachability is verified post-deploy by the operator:
+
+```bash
+# /api/* hits the Worker (JSON from 3.1.3)
+curl -i https://burnbar.andybowu.xyz/api/v1/leaderboard/daily
+# non-API paths serve the web landing page (Pages, from 3.4.2)
+curl -i https://burnbar.andybowu.xyz/
+```
+
 ## Endpoints
 
 Documented in this README as Epic 3.1.3 (#49) lands them: `POST /api/v1/usage`,

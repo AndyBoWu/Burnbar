@@ -25,6 +25,14 @@ database_name = "burnbar-staging"
 database_id = "REPLACE_AFTER_wrangler_d1_create_burnbar-staging"
 
 [env.prod]
+# Edge routing (3.6.2): bind only burnbar.andybowu.xyz/api/* to this API Worker.
+# All other paths (the Next.js site in web/site) fall through to the Cloudflare
+# Pages custom domain on burnbar.andybowu.xyz/*. The /api/* pattern is more
+# specific than the Pages catch-all, so /api/v1/* hits the Worker, not Pages.
+# `zone_name` is required because the route is on a zone apex/subdomain managed
+# by Cloudflare DNS (3.6.1). Reachability is verified post-deploy (see README).
+routes = [{ pattern = "burnbar.andybowu.xyz/api/*", zone_name = "andybowu.xyz" }]
+
 [[env.prod.d1_databases]]
 binding = "DB"
 database_name = "burnbar-prod"
