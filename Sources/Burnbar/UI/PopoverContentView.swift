@@ -7,7 +7,7 @@ import SwiftUI
 /// Refresh now / Settings… / Quit. Burn bars (1.5.3) sit between the tiles and
 /// the actions.
 struct PopoverContentView: View {
-    let store: UsageStore
+    @Bindable var store: UsageStore
 
     private var hasAnyData: Bool {
         guard let today = store.today else { return false }
@@ -17,6 +17,7 @@ struct PopoverContentView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
             header
+            modePicker
 
             if hasAnyData, let today = store.today {
                 ForEach(Provider.allCases) { provider in
@@ -84,6 +85,20 @@ struct PopoverContentView: View {
             Spacer()
             Text("Today").font(.caption).foregroundStyle(.secondary)
         }
+    }
+
+    /// "This Mac | All Macs" segmented control (2.4.1). Bound straight to
+    /// `store.viewMode`: flipping it persists the choice (the store writes the
+    /// `popover.viewMode` default) and reloads from the matching data source, so
+    /// the tiles and burn bars re-render in place without a restart.
+    private var modePicker: some View {
+        Picker("View", selection: $store.viewMode) {
+            ForEach(ViewMode.allCases) { mode in
+                Text(mode.title).tag(mode)
+            }
+        }
+        .pickerStyle(.segmented)
+        .labelsHidden()
     }
 
     private var emptyState: some View {
