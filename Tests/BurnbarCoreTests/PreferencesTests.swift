@@ -5,6 +5,7 @@ import XCTest
 /// sets, their storage decode/fallback behavior, and the provider-enable gate
 /// that `UsageStore.load` uses to skip a disabled parser.
 final class PreferencesTests: XCTestCase {
+
     // MARK: - AppTheme
 
     func testAppThemeCasesAndDefault() {

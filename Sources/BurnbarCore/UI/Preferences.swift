@@ -1,13 +1,13 @@
 import Foundation
 
-/// Pure, view-agnostic models + storage keys for the Settings window's controls
-/// (Epic 1.5.6). Living in `BurnbarCore` keeps the option sets, defaults, and the
-/// "which providers are enabled" gate unit-testable without launching the app —
-/// the SwiftUI `SettingsView` binds to these via `@AppStorage`, and `UsageStore`
-/// reads the same keys to skip a disabled provider.
-///
-/// English-only literals throughout (no String Catalog / `String(localized:)`),
-/// per the MVP constraint in CLAUDE.md.
+// Pure, view-agnostic models + storage keys for the Settings window's controls
+// (Epic 1.5.6). Living in `BurnbarCore` keeps the option sets, defaults, and the
+// "which providers are enabled" gate unit-testable without launching the app —
+// the SwiftUI `SettingsView` binds to these via `@AppStorage`, and `UsageStore`
+// reads the same keys to skip a disabled provider.
+//
+// English-only literals throughout (no String Catalog / `String(localized:)`),
+// per the MVP constraint in CLAUDE.md.
 
 /// The `UserDefaults` keys every persisted Settings control reads/writes, plus
 /// the defaults that apply before the user has touched a control.
