@@ -2,6 +2,13 @@ name = "burnbar-api"
 main = "src/index.ts"
 compatibility_date = "2026-01-01"
 
+# Pin the Cloudflare account that owns andybowu.xyz so every deploy targets the
+# right account even if a different CLOUDFLARE_ACCOUNT_ID is set in the shell
+# (this machine has multiple Cloudflare accounts — personal vs work). This is
+# the personal account that holds the andybowu.xyz zone. Account ids are not
+# secret.
+account_id = "0da36f4eefbf1078c5a04b966e8cd90d"
+
 # Data-retention cron (3.5.3): runs daily at 03:00 UTC, invoking the Worker's
 # scheduled() handler to purge daily_usage rows older than 90 days for
 # opted-OUT users. Opted-in users retain data indefinitely.
