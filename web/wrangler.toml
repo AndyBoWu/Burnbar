@@ -23,3 +23,13 @@ database_id = "REPLACE_AFTER_wrangler_d1_create_burnbar-staging"
 binding = "DB"
 database_name = "burnbar-prod"
 database_id = "REPLACE_AFTER_wrangler_d1_create_burnbar-prod"
+
+# Rate-limiting KV (3.1.4). Create with `wrangler kv namespace create RATE_LIMIT`
+# and paste the id per env; absent → the limiter fails open.
+[[env.staging.kv_namespaces]]
+binding = "RATE_LIMIT"
+id = "REPLACE_AFTER_wrangler_kv_namespace_create_RATE_LIMIT_staging"
+
+[[env.prod.kv_namespaces]]
+binding = "RATE_LIMIT"
+id = "REPLACE_AFTER_wrangler_kv_namespace_create_RATE_LIMIT_prod"

@@ -1,9 +1,12 @@
 import { type Context, Hono, type Next } from 'hono'
 import { type AuthVerifier, bearerToken, githubTokenVerifier, type Identity } from './auth'
 import { deleteMe, ensureUser, getMe, leaderboard, PERIODS, type Period, PROVIDERS, type Provider, upsertUsage } from './db'
+import { checkRateLimit, RATE_LIMITS } from './ratelimit'
 
 export interface Env {
   DB: D1Database
+  /** Optional KV for rate limiting. Absent → limiter fails open (allows). */
+  RATE_LIMIT?: KVNamespace
 }
 
 export interface Deps {
@@ -67,6 +70,10 @@ export function createApp(deps: Deps): Hono<{ Bindings: Env; Variables: { identi
     if (!token) return c.json({ error: 'missing bearer token' }, 401)
     const identity = await deps.verifyToken(token)
     if (!identity) return c.json({ error: 'invalid token' }, 401)
+    if (c.env.RATE_LIMIT) {
+      const rl = await checkRateLimit(c.env.RATE_LIMIT, `user:${identity.githubId}`, RATE_LIMITS.perUserPerMinute, RATE_LIMITS.windowSeconds, deps.now().getTime())
+      if (!rl.allowed) return c.json({ error: 'rate limit exceeded' }, 429)
+    }
     c.set('identity', identity)
     await next()
     return undefined
@@ -88,6 +95,11 @@ export function createApp(deps: Deps): Hono<{ Bindings: Env; Variables: { identi
   })
 
   app.get('/api/v1/leaderboard/:period', async (c) => {
+    if (c.env.RATE_LIMIT) {
+      const ip = c.req.header('CF-Connecting-IP') ?? 'unknown'
+      const rl = await checkRateLimit(c.env.RATE_LIMIT, `ip:${ip}`, RATE_LIMITS.perIpPerMinute, RATE_LIMITS.windowSeconds, deps.now().getTime())
+      if (!rl.allowed) return c.json({ error: 'rate limit exceeded' }, 429)
+    }
     const period = c.req.param('period')
     if (!PERIODS.includes(period as Period)) {
       return c.json({ error: 'period must be daily, weekly, or monthly' }, 400)
