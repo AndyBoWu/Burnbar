@@ -11,6 +11,7 @@ import XCTest
 /// pending→success, `slow_down` handling, `expired_token`, `access_denied`, and
 /// the timeout — each have a case below.
 final class GitHubDeviceFlowTests: XCTestCase {
+
     // MARK: - Test transport
 
     /// A scripted transport: returns queued responses in order, recording every

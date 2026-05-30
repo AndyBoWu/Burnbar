@@ -30,6 +30,7 @@ import Foundation
 /// Holds only immutable `@Sendable` closures and value config, so it is
 /// `Sendable` and safe to share across concurrency domains.
 public struct GitHubDeviceFlow: Sendable {
+
     // MARK: - Endpoints
 
     /// `POST` target for phase 1 (request a device + user code).
@@ -384,6 +385,7 @@ public extension GitHubDeviceFlow {
 }
 
 // MARK: - Wire types (file-private Decodable mirrors of GitHub's JSON)
+
 //
 // Kept at file scope rather than nested inside `GitHubDeviceFlow` so the
 // `CodingKeys` enums don't exceed SwiftLint's nesting depth. `private` here means
