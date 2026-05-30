@@ -45,19 +45,18 @@ public struct GitHubTokenRevoker: Sendable {
     public typealias Transport = @Sendable (Request) async throws -> Response
 
     /// The GitHub OAuth client id whose token is being revoked. Defaults to
-    /// ``GitHubDeviceFlow/placeholderClientID`` until #52 registers the real app.
+    /// ``GitHubDeviceFlow/defaultClientID`` (Burnbar's registered GitHub App).
     public let clientID: String
 
     private let transport: Transport
 
     /// - Parameters:
     ///   - clientID: GitHub OAuth client id. Defaults to
-    ///     ``GitHubDeviceFlow/placeholderClientID`` until #52 registers the real
-    ///     GitHub App.
+    ///     ``GitHubDeviceFlow/defaultClientID`` (Burnbar's registered GitHub App).
     ///   - transport: HTTP round-trip. Defaults to a `URLSession`-backed
     ///     implementation (``urlSessionTransport``).
     public init(
-        clientID: String = GitHubDeviceFlow.placeholderClientID,
+        clientID: String = GitHubDeviceFlow.defaultClientID,
         transport: @escaping Transport = GitHubTokenRevoker.urlSessionTransport
     ) {
         self.clientID = clientID

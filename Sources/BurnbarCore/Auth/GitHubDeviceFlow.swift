@@ -42,11 +42,11 @@ public struct GitHubDeviceFlow: Sendable {
     /// The `grant_type` GitHub requires when polling the token endpoint.
     public static let grantType = "urn:ietf:params:oauth:grant-type:device-code"
 
-    /// Placeholder `client_id` shipped until **3.2.1 / #52** registers the real
-    /// GitHub App and substitutes the production identifier. Kept obvious so a
-    /// build that forgot to wire the real value fails loudly against GitHub rather
-    /// than silently half-working.
-    public static let placeholderClientID = "REPLACE_AFTER_GITHUB_APP_REGISTRATION"
+    /// Burnbar's production GitHub App client id. Public by design — a GitHub
+    /// App's `client_id` is **not** a secret (the client *secret* lives only in
+    /// the Worker env, never in this repo). Registered under @AndyBoWu as the
+    /// "Burnbar Leaderboard" GitHub App with Device Flow enabled (#52 / 3.2.1).
+    public static let defaultClientID = "Iv23liZtq4q4ukHeLwsh"
 
     /// Hard ceiling on the whole poll loop: 15 minutes. GitHub's `device_code`
     /// itself typically expires around this mark; we enforce our own bound so the
@@ -68,7 +68,7 @@ public struct GitHubDeviceFlow: Sendable {
     /// production wires this to `Task.sleep`.
     public typealias Sleep = @Sendable (_ seconds: Double) async throws -> Void
 
-    /// The GitHub OAuth client id. Defaults to ``placeholderClientID``.
+    /// The GitHub OAuth client id. Defaults to ``defaultClientID``.
     public let clientID: String
 
     /// OAuth scopes requested in phase 1 (space-delimited per the spec).
@@ -79,8 +79,8 @@ public struct GitHubDeviceFlow: Sendable {
     private let now: @Sendable () -> Date
 
     /// - Parameters:
-    ///   - clientID: GitHub OAuth client id. Defaults to ``placeholderClientID``
-    ///     until #52 registers the real GitHub App.
+    ///   - clientID: GitHub OAuth client id. Defaults to ``defaultClientID``
+    ///     (Burnbar's registered GitHub App).
     ///   - scope: Space-delimited OAuth scopes. Defaults to empty (no extra
     ///     scope — Burnbar only needs to identify the user for the leaderboard).
     ///   - transport: HTTP round-trip. Defaults to a `URLSession`-backed
@@ -88,7 +88,7 @@ public struct GitHubDeviceFlow: Sendable {
     ///   - sleep: Cancellable wait. Defaults to `Task.sleep`.
     ///   - now: Clock for the timeout. Defaults to `Date.init`.
     public init(
-        clientID: String = GitHubDeviceFlow.placeholderClientID,
+        clientID: String = GitHubDeviceFlow.defaultClientID,
         scope: String = "",
         transport: @escaping Transport = GitHubDeviceFlow.urlSessionTransport,
         sleep: @escaping Sleep = { seconds in
