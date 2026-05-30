@@ -268,7 +268,7 @@ final class UsageStore {
     /// the All-Macs loader stays a tidy parameter list. All `Sendable`: the builder
     /// is stateless, the label map and id are plain values snapshotted on the main
     /// actor before the off-main load.
-    private struct BreakdownInputs: Sendable {
+    private struct BreakdownInputs {
         let builder: MachineBreakdownBuilder
         let labels: [String: String]
         let thisMachineID: String

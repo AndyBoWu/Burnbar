@@ -299,9 +299,9 @@ struct MachineBreakdownRowView: View {
 // MARK: - Previews
 
 #if DEBUG
-/// Previews the breakdown panel across the 1–5 machine range the DoD calls out, so
-/// layout (no clipping/overflow; the stale dim; the "This Mac" tag) can be eyeballed
-/// without launching the app.
+// Previews the breakdown panel across the 1–5 machine range the DoD calls out, so
+// layout (no clipping/overflow; the stale dim; the "This Mac" tag) can be eyeballed
+// without launching the app.
 #Preview("Breakdown · 1 machine") {
     MachineBreakdownView(rows: [
         MachineBreakdownRow(
