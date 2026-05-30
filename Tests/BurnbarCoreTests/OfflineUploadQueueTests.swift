@@ -174,12 +174,17 @@ final class OfflineUploadQueueTests: XCTestCase {
         struct CutNetwork: Error {}
 
         // Succeed on the first item, then the connection drops mid-drain (throw).
-        await XCTAssertThrowsErrorAsync(
-            try queue.drain { item in
+        // Explicit do/catch (not an async autoclosure) so SwiftFormat's hoistAwait
+        // can't strip the await off the actor-isolated drain call.
+        do {
+            _ = try await queue.drain { item in
                 if item.date == "2026-05-28" { throw CutNetwork() }
                 return true
             }
-        )
+            XCTFail("expected drain to rethrow when the uploader cuts the network")
+        } catch is CutNetwork {
+            // expected
+        }
 
         // The uploaded item is gone; the in-flight and unattempted items remain and
         // recover on the next drain — no row is lost, none duplicated.
