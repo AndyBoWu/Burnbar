@@ -80,7 +80,7 @@ final class AuthController {
         // single "already signed in" condition.
         hasStoredToken = {
             let stored = try? tokenStore.read()
-            return stored.flatMap { $0 } != nil
+            return stored.flatMap(\.self) != nil
         }
         clearToken = { try? tokenStore.delete() }
         self.copyToPasteboard = copyToPasteboard
