@@ -1,0 +1,43 @@
+# SwiftFormat configuration for Burnbar.
+# Conservative ruleset — formats consistently without fighting the existing
+# clean code. Pairs with .swiftlint.yml; `make lint` runs both.
+#
+# Run `make format` to apply, `make lint` to check (CI / pre-commit).
+
+# Pin to the project's Swift version (project.yml SWIFT_VERSION).
+--swiftversion 6.0
+
+# --- Layout ---------------------------------------------------------------
+--indent 4
+--maxwidth 120
+--wraparguments before-first
+--wrapparameters before-first
+--wrapcollections before-first
+--commas inline
+--trimwhitespace always
+--ifdef no-indent
+
+# --- Self / returns -------------------------------------------------------
+# Keep `self.` only where required (init assignments stay explicit).
+--self remove
+# Keep explicit `return` in single-expression bodies — the existing code uses
+# `case .claude: return "..."`, and dropping it would churn that style.
+--redundanttype inferred
+
+# --- Imports / headers ----------------------------------------------------
+--importgrouping testable-bottom
+# Do not stamp/alter file headers — sources carry hand-written doc banners.
+--header ignore
+
+# --- Disabled rules -------------------------------------------------------
+# redundantReturn: existing switch cases use explicit `return`; keep them.
+# wrapMultilineStatementBraces: too opinionated for the current code.
+# blankLinesAtStartOfScope: leave authored spacing inside doc-heavy types.
+# wrapPropertyBodies: keep clean one-liner computed props (e.g. `var id { ... }`).
+# noForceUnwrapInTests: rewrites `x!` into `try XCTUnwrap` — that changes test
+#   control flow (a logic change), not formatting. Leave test force-unwraps alone;
+#   SwiftLint's force_unwrapping is also scoped to keep tests pragmatic.
+--disable redundantReturn, wrapMultilineStatementBraces, blankLinesAtStartOfScope, wrapPropertyBodies, noForceUnwrapInTests
+
+# --- Excluded paths -------------------------------------------------------
+--exclude build,.build,.claude,Burnbar.xcodeproj,Tests/Fixtures,DerivedData

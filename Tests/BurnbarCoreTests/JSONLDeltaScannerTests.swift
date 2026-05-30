@@ -9,8 +9,8 @@ import XCTest
 /// anonymized (every prompt/response field is `REDACTED`) and exist precisely to
 /// prove the scanner never reads them.
 final class JSONLDeltaScannerTests: XCTestCase {
-    // Fixed clock: all fixture lines and "today" files hang off this.
-    private static let fixedNow = Date(timeIntervalSince1970: 1_780_000_000)  // 2026-05-28
+    /// Fixed clock: all fixture lines and "today" files hang off this.
+    private static let fixedNow = Date(timeIntervalSince1970: 1_780_000_000) // 2026-05-28
 
     private var tempRoot: URL!
 
@@ -72,8 +72,8 @@ final class JSONLDeltaScannerTests: XCTestCase {
         // Tests/BurnbarCoreTests/<thisFile>  ->  Tests/Fixtures/Claude/<name>
         let thisFile = URL(fileURLWithPath: #filePath)
         return thisFile
-            .deletingLastPathComponent()  // Tests/BurnbarCoreTests
-            .deletingLastPathComponent()  // Tests
+            .deletingLastPathComponent() // Tests/BurnbarCoreTests
+            .deletingLastPathComponent() // Tests
             .appendingPathComponent("Fixtures/Claude/\(name)")
     }
 
@@ -99,10 +99,10 @@ final class JSONLDeltaScannerTests: XCTestCase {
         let opus = try XCTUnwrap(totals["claude-opus-4-7"])
         // Two assistant lines: input 2+8, cacheCreate 31824+100, cacheRead 0+50000, output 137+63.
         XCTAssertEqual(opus.inputTokens, 10)
-        XCTAssertEqual(opus.cacheCreationTokens, 31_924)
-        XCTAssertEqual(opus.cacheReadTokens, 50_000)
+        XCTAssertEqual(opus.cacheCreationTokens, 31924)
+        XCTAssertEqual(opus.cacheReadTokens, 50000)
         XCTAssertEqual(opus.outputTokens, 200)
-        XCTAssertEqual(opus.total, 10 + 31_924 + 50_000 + 200)
+        XCTAssertEqual(opus.total, 10 + 31924 + 50000 + 200)
     }
 
     func testMultiModelGroupsByModelAndToleratesGarbledLines() throws {
@@ -117,13 +117,13 @@ final class JSONLDeltaScannerTests: XCTestCase {
         XCTAssertEqual(opus.inputTokens, 10)
         XCTAssertEqual(opus.outputTokens, 20)
         XCTAssertEqual(opus.cacheCreationTokens, 200)
-        XCTAssertEqual(opus.cacheReadTokens, 1_000)
+        XCTAssertEqual(opus.cacheReadTokens, 1000)
 
         let sonnet = try XCTUnwrap(totals["claude-sonnet-4-6"])
-        XCTAssertEqual(sonnet.inputTokens, 12)  // 5 + 7
-        XCTAssertEqual(sonnet.outputTokens, 43)  // 40 + 3
-        XCTAssertEqual(sonnet.cacheReadTokens, 300)  // 300 + (missing -> 0)
-        XCTAssertEqual(sonnet.cacheCreationTokens, 0)  // 0 + (missing -> 0)
+        XCTAssertEqual(sonnet.inputTokens, 12) // 5 + 7
+        XCTAssertEqual(sonnet.outputTokens, 43) // 40 + 3
+        XCTAssertEqual(sonnet.cacheReadTokens, 300) // 300 + (missing -> 0)
+        XCTAssertEqual(sonnet.cacheCreationTokens, 0) // 0 + (missing -> 0)
 
         let unknown = try XCTUnwrap(totals["unknown"])
         XCTAssertEqual(unknown.inputTokens, 1)

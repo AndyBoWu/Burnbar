@@ -58,12 +58,15 @@ Leaderboard upload (M3) aggregates *across* machines first (via the M2 reconcile
 - `xcodebuild -project Burnbar.xcodeproj -scheme Burnbar -destination 'platform=macOS' build` — build the app (add `CODE_SIGNING_ALLOWED=NO` for unsigned local builds).
 - `xcodebuild -project Burnbar.xcodeproj -scheme Burnbar -destination 'platform=macOS' test` — run `BurnbarCoreTests`.
 - `./Scripts/compile_and_run.sh` — regenerate the project, build Debug, and launch Burnbar.app from a clean clone (1.1.4).
+- `make lint` — SwiftFormat (`--lint`) + SwiftLint (`--strict`); non-zero exit on any violation (1.1.2). Requires `brew install swiftlint swiftformat`.
+- `make format` — auto-apply SwiftFormat + `swiftlint --fix` in place (1.1.2).
+
+Pre-commit is optional: `brew install lefthook && lefthook install` wires `lefthook.yml` to run `make lint` on every commit and block style violations. Lefthook is **not** guaranteed installed in CI/agent environments — run `make lint` manually before commits and handoffs (the reliable path).
 
 _Planned (each lands with its sub-ticket; update this section in the same PR):_
 
 - `./Scripts/package_app.sh` — **stubbed** pending Epic 1.6: Release build → ad-hoc signed `.zip`/`.dmg` (1.6.1, 1.6.2)
 - `./Scripts/update_cask.sh` — bump Homebrew tap cask version + sha256 after a release (1.6.5)
-- `make lint` — SwiftLint + SwiftFormat (1.1.2)
 - `./Scripts/install_launchagent.sh` — install LaunchAgent for login auto-start (1.6.3)
 
 Update this section in the same PR that introduces each script.

@@ -8,6 +8,7 @@ import XCTest
 /// they never touch the user's real `~/.codex/state_5.sqlite` and commit no real
 /// data. A committed anonymized fixture is also exercised when present.
 final class CodexSQLiteReaderTests: XCTestCase {
+
     // MARK: - Temp DB helpers
 
     /// Creates a small SQLite DB at a unique temp path with the given DDL/inserts

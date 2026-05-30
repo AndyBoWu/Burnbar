@@ -9,6 +9,7 @@ import XCTest
 /// touch the user's real `~/.codex/state_5.sqlite` and commit no real data. The
 /// committed anonymized fixture is also exercised when present.
 final class CodexThreadsReaderTests: XCTestCase {
+
     // MARK: - Temp DB helpers
 
     /// Creates a small SQLite DB at a unique temp path with the given DDL/inserts
@@ -82,7 +83,7 @@ final class CodexThreadsReaderTests: XCTestCase {
         let sql = CodexThreadsReader.aggregationSQL.lowercased()
         for forbidden in [
             "title", "first_user_message", "preview", "cwd",
-            "git_sha", "git_branch", "git_origin_url", "rollout_path",
+            "git_sha", "git_branch", "git_origin_url", "rollout_path"
         ] {
             XCTAssertFalse(
                 sql.contains(forbidden),

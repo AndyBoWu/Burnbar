@@ -132,7 +132,8 @@ public struct CostCalculator: Sendable {
     /// (`StatsCacheReader` / `JSONLDeltaScanner`).
     private func warnUnknownModel(_ model: String) {
         FileHandle.standardError.write(
-            Data("[CostCalculator] warning: unknown model \"\(model)\"; costed as $0 (surfaced as \"Unknown model\").\n".utf8)
+            Data("[CostCalculator] warning: unknown model \"\(model)\"; costed as $0 (surfaced as \"Unknown model\").\n"
+                .utf8)
         )
     }
 }

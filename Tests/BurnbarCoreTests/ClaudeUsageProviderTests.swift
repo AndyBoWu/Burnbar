@@ -8,6 +8,7 @@ import XCTest
 /// fixed-timezone calendar, so "today" and the JSONL midnight cutoff are fully
 /// deterministic. Fixtures under `Tests/Fixtures/Claude/` are reused as-is.
 final class ClaudeUsageProviderTests: XCTestCase {
+
     // MARK: - Deterministic time
 
     /// UTC calendar so the formatted "today" key and the scanner's local-midnight
@@ -107,7 +108,7 @@ final class ClaudeUsageProviderTests: XCTestCase {
 
     func testMergesCacheHistoryWithTodayDelta() throws {
         try installTodayDelta()
-        let records = try provider(cache: try fixtureCacheReader(), scanner: scanner()).usageRecords()
+        let records = try provider(cache: fixtureCacheReader(), scanner: scanner()).usageRecords()
 
         // History days (31 in fixture, all before today) + today's single model.
         XCTAssertFalse(records.isEmpty)
@@ -120,8 +121,8 @@ final class ClaudeUsageProviderTests: XCTestCase {
         )
         XCTAssertEqual(todayOpus.inputTokens, 10)
         XCTAssertEqual(todayOpus.outputTokens, 200)
-        XCTAssertEqual(todayOpus.cacheReadTokens, 50_000)
-        XCTAssertEqual(todayOpus.cacheCreationTokens, 31_924)
+        XCTAssertEqual(todayOpus.cacheReadTokens, 50000)
+        XCTAssertEqual(todayOpus.cacheCreationTokens, 31924)
 
         // A historical day from the cache is present and mapped aggregate→input.
         let histDay = try XCTUnwrap(
@@ -137,20 +138,20 @@ final class ClaudeUsageProviderTests: XCTestCase {
     /// DoD: total for today equals the manual sum of today's `message.usage`.
     func testTodayTotalMatchesManualJSONLSum() throws {
         try installTodayDelta()
-        let records = try provider(cache: try fixtureCacheReader(), scanner: scanner()).usageRecords()
+        let records = try provider(cache: fixtureCacheReader(), scanner: scanner()).usageRecords()
 
         let todayTotal = records
             .filter { $0.day == Self.todayKey }
             .reduce(0) { $0 + $1.totalTokens }
 
         // single-model.jsonl: input 2+8, output 137+63, cacheRead 0+50000, cacheCreate 31824+100.
-        let manual = (2 + 8) + (137 + 63) + (0 + 50_000) + (31_824 + 100)
+        let manual = (2 + 8) + (137 + 63) + (0 + 50000) + (31824 + 100)
         XCTAssertEqual(todayTotal, manual)
     }
 
     func testRecordsAreSortedByDayThenModel() throws {
         try installTodayDelta()
-        let records = try provider(cache: try fixtureCacheReader(), scanner: scanner()).usageRecords()
+        let records = try provider(cache: fixtureCacheReader(), scanner: scanner()).usageRecords()
         let keys = records.map { "\($0.day)|\($0.model)" }
         XCTAssertEqual(keys, keys.sorted(), "records must be in (day, model) order")
     }
@@ -173,7 +174,7 @@ final class ClaudeUsageProviderTests: XCTestCase {
         }
         """
         try installTodayDelta()
-        let records = try provider(cache: try cacheReader(json: json), scanner: scanner()).usageRecords()
+        let records = try provider(cache: cacheReader(json: json), scanner: scanner()).usageRecords()
 
         // Exactly one record for today's opus, and it carries the LIVE value, not
         // the cache's stale 777777, and not their sum.
@@ -203,7 +204,7 @@ final class ClaudeUsageProviderTests: XCTestCase {
         }
         """
         // No installTodayDelta(): projects dir is empty.
-        let records = try provider(cache: try cacheReader(json: json), scanner: scanner()).usageRecords()
+        let records = try provider(cache: cacheReader(json: json), scanner: scanner()).usageRecords()
         XCTAssertTrue(
             records.allSatisfy { $0.day != Self.todayKey },
             "cache's today entry must be dropped; no live delta means no today records"
@@ -234,7 +235,7 @@ final class ClaudeUsageProviderTests: XCTestCase {
         // History present, but no JSONL touched today.
         let yesterday = Self.utcCalendar.date(byAdding: .day, value: -1, to: Self.fixedNow)!
         try installTodayDelta(modified: yesterday) // stale → ignored by scanner
-        let records = try provider(cache: try fixtureCacheReader(), scanner: scanner()).usageRecords()
+        let records = try provider(cache: fixtureCacheReader(), scanner: scanner()).usageRecords()
 
         XCTAssertFalse(records.isEmpty)
         XCTAssertTrue(

@@ -31,7 +31,8 @@ final class PricingFreshnessTests: XCTestCase {
             maxAgeDays,
             """
             PricingTable is \(ageDays) days stale (snapshot \(PricingTable.snapshotDate), max \(maxAgeDays)). \
-            Re-verify per-model rates against the official Anthropic/OpenAI pricing pages and update PricingTable.swift \
+            Re-verify per-model rates against the official Anthropic/OpenAI pricing pages \
+            and update PricingTable.swift \
             (bump both the `Pricing snapshot:` comment and `snapshotDate`).
             """
         )

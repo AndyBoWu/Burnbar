@@ -49,9 +49,9 @@ final class CostCalculatorTests: XCTestCase {
         let r = record(
             .claude, "claude-sonnet-4-6",
             input: 250_000,
-            output: 80_000,
+            output: 80000,
             cacheRead: 1_500_000,
-            cacheCreation: 40_000
+            cacheCreation: 40000
         )
         // 0.25*3 + 0.08*15 + 1.5*0.3 + 0.04*3.75
         // = 0.75 + 1.2 + 0.45 + 0.15 = 2.55
@@ -62,9 +62,9 @@ final class CostCalculatorTests: XCTestCase {
         // claude-haiku-4-5-20251001: input 1, output 5, cacheRead 0.1, cacheCreate 1.25.
         let r = record(
             .claude, "claude-haiku-4-5-20251001",
-            input: 12_345,
-            output: 6_789,
-            cacheRead: 1_111,
+            input: 12345,
+            output: 6789,
+            cacheRead: 1111,
             cacheCreation: 222
         )
         // (12345*1 + 6789*5 + 1111*0.1 + 222*1.25) / 1_000_000
@@ -76,9 +76,23 @@ final class CostCalculatorTests: XCTestCase {
         // DoD: daily cost matches the reference on identical input. Sum several
         // records on one day and compare to the hand-computed total.
         let records = [
-            record(.claude, "claude-opus-4-7", input: 1_000_000, output: 500_000, cacheRead: 2_000_000, cacheCreation: 100_000), // 57.375
-            record(.claude, "claude-sonnet-4-6", input: 250_000, output: 80_000, cacheRead: 1_500_000, cacheCreation: 40_000),    // 2.55
-            record(.codex, "gpt-5", input: 4_000_000),                                                                            // 4.0 * 1.25 = 5.0
+            record(
+                .claude,
+                "claude-opus-4-7",
+                input: 1_000_000,
+                output: 500_000,
+                cacheRead: 2_000_000,
+                cacheCreation: 100_000
+            ), // 57.375
+            record(
+                .claude,
+                "claude-sonnet-4-6",
+                input: 250_000,
+                output: 80000,
+                cacheRead: 1_500_000,
+                cacheCreation: 40000
+            ), // 2.55
+            record(.codex, "gpt-5", input: 4_000_000) // 4.0 * 1.25 = 5.0
         ]
         // 57.375 + 2.55 + 5.0 = 64.925
         XCTAssertEqual(calc.cost(for: records), Decimal(string: "64.925"))
@@ -120,7 +134,7 @@ final class CostCalculatorTests: XCTestCase {
         // `priced(_:)` must return the record (with costUSD = 0), never drop it.
         let records = [
             record(.claude, "claude-opus-4-7", input: 1_000_000), // 15
-            record(.claude, "mystery-model", input: 5_000_000),   // unknown → 0
+            record(.claude, "mystery-model", input: 5_000_000) // unknown → 0
         ]
         let priced = calc.priced(records)
         XCTAssertEqual(priced.count, 2, "unknown-model record must be retained")
@@ -137,7 +151,14 @@ final class CostCalculatorTests: XCTestCase {
     // MARK: - priced(_:) helper
 
     func testPricedPopulatesCostUSDPreservingOtherFields() {
-        let r = record(.claude, "claude-sonnet-4-6", input: 250_000, output: 80_000, cacheRead: 1_500_000, cacheCreation: 40_000)
+        let r = record(
+            .claude,
+            "claude-sonnet-4-6",
+            input: 250_000,
+            output: 80000,
+            cacheRead: 1_500_000,
+            cacheCreation: 40000
+        )
         let priced = calc.priced(r)
         XCTAssertEqual(priced.costUSD ?? -1, 2.55, accuracy: 1e-9)
         // Untouched fields survive.
@@ -153,8 +174,8 @@ final class CostCalculatorTests: XCTestCase {
     func testPricedRecordsFeedAggregatorCleanly() {
         // Sanity: priced records flow into the aggregator and their costUSD sums.
         let records = calc.priced([
-            record(.claude, "claude-opus-4-7", input: 1_000_000),  // 15
-            record(.codex, "gpt-5", input: 4_000_000),             // 5
+            record(.claude, "claude-opus-4-7", input: 1_000_000), // 15
+            record(.codex, "gpt-5", input: 4_000_000) // 5
         ])
         let agg = TimeWindowAggregator()
         let today = agg.aggregate(records, window: .today, now: makeNoon("2026-05-29"))

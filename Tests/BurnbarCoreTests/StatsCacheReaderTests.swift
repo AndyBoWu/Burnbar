@@ -8,6 +8,7 @@ import XCTest
 /// `#filePath` (repo-relative) and copied into a temp dir for each test that
 /// needs a concrete `fileURL`.
 final class StatsCacheReaderTests: XCTestCase {
+
     // MARK: - Fixture location
 
     /// Repo root, derived from this file's path:
@@ -42,7 +43,7 @@ final class StatsCacheReaderTests: XCTestCase {
     // MARK: - Happy path / Definition of Done
 
     func testDecodesFixtureWithAtLeastThirtyDaysOfDailyModelTokens() throws {
-        let url = try writeTempFile(try loadFixtureData())
+        let url = try writeTempFile(loadFixtureData())
         let cache = try StatsCacheReader(fileURL: url).read()
 
         XCTAssertEqual(cache.version, 3)
@@ -54,7 +55,7 @@ final class StatsCacheReaderTests: XCTestCase {
     }
 
     func testDailyModelTokensExposeRawModelIdsAndCounts() throws {
-        let url = try writeTempFile(try loadFixtureData())
+        let url = try writeTempFile(loadFixtureData())
         let cache = try StatsCacheReader(fileURL: url).read()
 
         let firstDay = try XCTUnwrap(cache.dailyModelTokens.first)
@@ -65,11 +66,11 @@ final class StatsCacheReaderTests: XCTestCase {
     }
 
     func testModelUsageDecodesAllFiveAggregateFields() throws {
-        let url = try writeTempFile(try loadFixtureData())
+        let url = try writeTempFile(loadFixtureData())
         let cache = try StatsCacheReader(fileURL: url).read()
 
         let opus = try XCTUnwrap(cache.modelUsage["claude-opus-4-7"])
-        XCTAssertEqual(opus.inputTokens, 63_474)
+        XCTAssertEqual(opus.inputTokens, 63474)
         XCTAssertEqual(opus.outputTokens, 1_592_614)
         XCTAssertEqual(opus.cacheReadInputTokens, 65_907_504)
         XCTAssertEqual(opus.cacheCreationInputTokens, 4_270_790)
@@ -80,7 +81,7 @@ final class StatsCacheReaderTests: XCTestCase {
     /// `contextWindow`, …) and sibling top-level keys (`dailyActivity`,
     /// `hourCounts`, …). Decoding must ignore them, not fail.
     func testIgnoresUnknownExtraFields() throws {
-        let url = try writeTempFile(try loadFixtureData())
+        let url = try writeTempFile(loadFixtureData())
         let cache = try StatsCacheReader(fileURL: url).read()
 
         // sonnet entry in the fixture has only the modeled fields + webSearchRequests

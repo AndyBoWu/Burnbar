@@ -10,6 +10,7 @@ import XCTest
 /// and commit no real data. The committed anonymized fixture is also exercised
 /// when present, to prove DoD parity end-to-end.
 final class CodexUsageProviderTests: XCTestCase {
+
     // MARK: - Temp DB helpers
 
     private func makeTempDatabase(
