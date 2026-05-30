@@ -251,7 +251,7 @@ final class UploadSchedulerTests: XCTestCase {
         let sut = scheduler()
         let cap: TimeInterval = 24 * 60 * 60
         // 2^10 * 60 = 61_440s < 24h; 2^11 * 60 = 122_880s > 24h, so it clamps.
-        XCTAssertEqual(sut.backoffDelay(forAttempt: 10), 61_440)
+        XCTAssertEqual(sut.backoffDelay(forAttempt: 10), 61440)
         XCTAssertEqual(sut.backoffDelay(forAttempt: 11), cap)
         // Far past the cap (and past the internal exponent guard) stays clamped.
         XCTAssertEqual(sut.backoffDelay(forAttempt: 50), cap)
