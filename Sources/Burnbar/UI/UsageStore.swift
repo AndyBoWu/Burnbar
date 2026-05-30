@@ -15,6 +15,10 @@ final class UsageStore {
     /// Today's aggregated usage (per-provider + per-model breakdown), or `nil`
     /// before the first successful load.
     private(set) var today: WindowAggregate?
+    /// This week's aggregated usage, feeding the weekly burn bar (1.5.3).
+    private(set) var week: WindowAggregate?
+    /// This month's aggregated usage, feeding the monthly burn bar (1.5.3).
+    private(set) var month: WindowAggregate?
     /// When the last load completed, for the "updated N ago" footer.
     private(set) var lastUpdated: Date?
     private(set) var isLoading = false
@@ -50,6 +54,8 @@ final class UsageStore {
                 aggregator: aggregator
             )
             today = snapshot.today
+            week = snapshot.week
+            month = snapshot.month
             warnings = snapshot.warnings
             lastUpdated = Date()
             isLoading = false
@@ -59,6 +65,8 @@ final class UsageStore {
 
     private struct Snapshot {
         var today: WindowAggregate?
+        var week: WindowAggregate?
+        var month: WindowAggregate?
         var warnings: [String]
     }
 
@@ -85,7 +93,14 @@ final class UsageStore {
         }
 
         let priced = calculator.priced(records)
-        let today = aggregator.aggregate(priced, window: .today)
-        return Snapshot(today: today, warnings: warnings)
+        // One pass produces all three windows; today/week/month feed the tiles
+        // and the weekly/monthly burn bars (1.5.3).
+        let windows = aggregator.aggregate(priced)
+        return Snapshot(
+            today: windows[.today],
+            week: windows[.week],
+            month: windows[.month],
+            warnings: warnings
+        )
     }
 }
