@@ -1,6 +1,7 @@
 import { type Context, Hono, type Next } from 'hono'
 import { type AuthVerifier, bearerToken, githubTokenVerifier, type Identity } from './auth'
 import { deleteMe, ensureUser, getMe, leaderboard, PERIODS, type Period, PROVIDERS, type Provider, upsertUsage } from './db'
+import { logError, logRequest } from './log'
 import { checkRateLimit, RATE_LIMITS } from './ratelimit'
 
 export interface Env {
@@ -60,6 +61,19 @@ function validateUsage(body: unknown): { ok: true; value: ValidUsage } | { ok: f
 
 export function createApp(deps: Deps): Hono<{ Bindings: Env; Variables: { identity: Identity } }> {
   const app = new Hono<{ Bindings: Env; Variables: { identity: Identity } }>()
+
+  // Structured request log for every response (feeds Workers Logs / the dashboard).
+  app.use('*', async (c, next) => {
+    const start = Date.now()
+    await next()
+    logRequest({ method: c.req.method, path: new URL(c.req.url).pathname, status: c.res.status, durationMs: Date.now() - start })
+  })
+
+  // Error boundary: log + a non-leaky 500 (never echo internals/stack to clients).
+  app.onError((err, c) => {
+    logError(err, { path: new URL(c.req.url).pathname })
+    return c.json({ error: 'internal error' }, 500)
+  })
 
   app.get('/', (c) => c.json({ ok: true, service: 'burnbar-api' }))
 
