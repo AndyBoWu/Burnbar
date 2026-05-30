@@ -58,6 +58,9 @@ secrets/
 *.swo
 *~
 
+# Release artifacts (produced by Scripts/package_app.sh)
+dist/
+
 # Logs
 *.log
 
