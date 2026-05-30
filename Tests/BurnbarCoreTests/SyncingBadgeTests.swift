@@ -9,6 +9,7 @@ import XCTest
 /// count the badge reports equals the number of machines the reconciler summed into
 /// the combined total (so the badge and the displayed burn can never disagree).
 final class SyncingBadgeTests: XCTestCase {
+
     // MARK: - Singular / plural wording
 
     /// Two or more machines use the plural "Macs" with the count.
@@ -43,7 +44,7 @@ final class SyncingBadgeTests: XCTestCase {
         let byMachine: [String: [UsageRecord]] = [
             "mac-a": [record(input: 100)],
             "mac-b": [record(input: 200)],
-            "mac-c": [record(input: 300)],
+            "mac-c": [record(input: 300)]
         ]
 
         let reconciled = Reconciler().merge(byMachine)
@@ -55,7 +56,7 @@ final class SyncingBadgeTests: XCTestCase {
         // And it equals the number of machines actually folded into the total: the
         // combined input tokens equal the sum of every per-machine input total.
         let combinedInput = reconciled.combined.reduce(0) { $0 + $1.inputTokens }
-        let perMachineInput = byMachine.values.flatMap { $0 }.reduce(0) { $0 + $1.inputTokens }
+        let perMachineInput = byMachine.values.flatMap(\.self).reduce(0) { $0 + $1.inputTokens }
         XCTAssertEqual(combinedInput, perMachineInput, "combined burn must equal the sum of per-machine burn")
     }
 
