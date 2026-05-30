@@ -58,7 +58,7 @@ final class DailyRollupWriterTests: XCTestCase {
                 day: "2026-05-29",
                 inputTokens: 42,
                 costUSD: 0.10
-            ),
+            )
         ]
 
         let writer = DailyRollupWriter(directory: tempDir)
@@ -111,7 +111,7 @@ final class DailyRollupWriterTests: XCTestCase {
             UsageRecord(
                 provider: .claude, model: "claude-opus-4-7", day: "2026-05-30",
                 inputTokens: 9, outputTokens: 9, cacheReadTokens: 0, cacheCreationTokens: 0, costUSD: 0.09
-            ),
+            )
         ]
 
         let writer = DailyRollupWriter(directory: tempDir)
@@ -140,7 +140,7 @@ final class DailyRollupWriterTests: XCTestCase {
             UsageRecord(provider: .claude, model: "claude-opus-4-7", day: "2026-05-29", inputTokens: 1),
             UsageRecord(provider: .codex, model: "gpt-5", day: "2026-05-29", inputTokens: 1),
             UsageRecord(provider: .codex, model: "gpt-5", day: "2026-05-30", inputTokens: 1),
-            UsageRecord(provider: .codex, model: "gpt-5", day: "2026-05-30", inputTokens: 1),
+            UsageRecord(provider: .codex, model: "gpt-5", day: "2026-05-30", inputTokens: 1)
         ]
         let distinctKeys = Set(records.map { "\($0.day)|\($0.provider.rawValue)|\($0.model)" })
 
@@ -186,7 +186,7 @@ final class DailyRollupWriterTests: XCTestCase {
             UsageRecord(
                 provider: .claude, model: "claude-opus-4-7", day: "2026-05-29",
                 inputTokens: 100, outputTokens: 20, cacheReadTokens: 5, cacheCreationTokens: 3, costUSD: 1.25
-            ),
+            )
         ]
         let writer = DailyRollupWriter(directory: tempDir)
         try writer.write(records: records, machineID: machineID)
@@ -196,10 +196,10 @@ final class DailyRollupWriterTests: XCTestCase {
             JSONSerialization.jsonObject(with: Data(line.utf8)) as? [String: Any]
         )
 
-        let expectedKeys: Set<String> = [
+        let expectedKeys: Set = [
             "date", "provider", "model",
             "inputTokens", "outputTokens", "cacheReadTokens", "cacheCreationTokens",
-            "costUSD",
+            "costUSD"
         ]
         XCTAssertEqual(Set(object.keys), expectedKeys)
 
@@ -207,7 +207,7 @@ final class DailyRollupWriterTests: XCTestCase {
         let forbidden = [
             "cwd", "path", "projectPath", "project", "git_branch", "git_origin_url",
             "git_sha", "title", "first_user_message", "preview", "content", "message",
-            "text", "machineID", "machine_id",
+            "text", "machineID", "machine_id"
         ]
         for key in forbidden {
             XCTAssertNil(object[key], "rollup line must not contain '\(key)'")
@@ -219,7 +219,7 @@ final class DailyRollupWriterTests: XCTestCase {
     func testCodexNilFieldsAreOmittedFromJSON() throws {
         let machineID = "codexnilmachine01"
         let records = [
-            UsageRecord(provider: .codex, model: "gpt-5", day: "2026-05-29", inputTokens: 42),
+            UsageRecord(provider: .codex, model: "gpt-5", day: "2026-05-29", inputTokens: 42)
         ]
         let writer = DailyRollupWriter(directory: tempDir)
         try writer.write(records: records, machineID: machineID)
@@ -244,12 +244,12 @@ final class DailyRollupWriterTests: XCTestCase {
             UsageRecord(
                 provider: .claude, model: "claude-opus-4-7", day: "2026-05-29",
                 inputTokens: 10, outputTokens: 5, cacheReadTokens: 7, cacheCreationTokens: nil, costUSD: 0.3
-            ),
+            )
         ]
         let writer = DailyRollupWriter(directory: tempDir)
         try writer.write(records: records, machineID: machineID)
 
-        let line = try decode(try XCTUnwrap(readLines(machineID: machineID).first))
+        let line = try decode(XCTUnwrap(readLines(machineID: machineID).first))
         XCTAssertEqual(line.inputTokens, 20)
         XCTAssertEqual(line.outputTokens, 5)
         XCTAssertEqual(line.cacheReadTokens, 7)
