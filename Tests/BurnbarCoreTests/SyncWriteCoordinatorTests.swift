@@ -173,6 +173,32 @@ final class SyncWriteCoordinatorTests: XCTestCase {
         XCTAssertNil(store.lastWriteAt(), "a failed write must not record a timestamp")
     }
 
+    // MARK: - Manual trigger (2.5.3 Force resync)
+
+    func testForceWriteWritesAndPersistsTimestampLikeWrite() async {
+        let store = FakeLastWriteStore()
+        let spy = WriteSpy()
+        let fixedNow = Date(timeIntervalSince1970: 1_700_000_000)
+        let directory = Self.directory
+
+        let coordinator = SyncWriteCoordinator(
+            resolveLocation: { .container(directory) },
+            loadRecords: { Self.sampleRecords() },
+            machineID: { "abc123def456abcd" },
+            writeRollup: { recs, dir, id in spy.record(recs, dir, id) },
+            store: store,
+            now: { fixedNow }
+        )
+
+        // The manual "Force resync" entry point behaves identically to write():
+        // one immediate write, timestamp advanced.
+        let outcome = await coordinator.forceWrite()
+
+        XCTAssertEqual(outcome, .wrote(at: fixedNow))
+        XCTAssertEqual(store.lastWriteAt(), fixedNow)
+        XCTAssertEqual(spy.count, 1)
+    }
+
     // MARK: - Overlap guard
 
     func testConcurrentWritesDoNotOverlap() async {

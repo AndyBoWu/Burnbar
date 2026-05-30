@@ -274,6 +274,22 @@ private struct DevicesTableSection: View {
                     )
                 }
             }
+
+            // Force resync (2.5.3): write this Mac's rollup now, then re-read every
+            // machine and the combined view — without waiting for the next
+            // scheduled write. Disabled + spinner-labelled while in flight so a
+            // double-tap can't launch two writes.
+            HStack(spacing: 8) {
+                Button("Force resync") { fleet.forceResync() }
+                    .disabled(fleet.isResyncing)
+                if fleet.isResyncing {
+                    ProgressView()
+                        .controlSize(.small)
+                    Text("Syncing…")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+            }
         } header: {
             Text("Devices")
         } footer: {
