@@ -40,6 +40,25 @@ Vibe coding with Claude Code or Codex? You're burning tokens — but you can't s
 - macOS 14+ (Sonoma)
 - Xcode 15+ (for development)
 
+## Build from source
+
+Prerequisites: **macOS 14+**, **Xcode 15+**, and [XcodeGen](https://github.com/yonsm/XcodeGen) (`brew install xcodegen`) — the `.xcodeproj` is generated from `project.yml`, not committed.
+
+```bash
+git clone https://github.com/AndyBoWu/Burnbar.git
+cd Burnbar
+./Scripts/compile_and_run.sh   # generates the project, builds Debug, launches the menu-bar app
+```
+
+Look for the 🔥 flame icon in your menu bar (Burnbar runs as an `LSUIElement` agent — no Dock icon).
+
+To run the tests:
+
+```bash
+xcodegen generate
+xcodebuild -project Burnbar.xcodeproj -scheme Burnbar -destination 'platform=macOS' test
+```
+
 ## License
 
 MIT © Andy Wu
