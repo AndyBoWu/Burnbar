@@ -567,6 +567,11 @@ private final class SyncHealthMonitor: ObservableObject {
 private struct LeaderboardAccountSection: View {
     @Bindable var auth: AuthController
 
+    /// Drives the "Revoke access" confirmation dialog. Revocation is irreversible
+    /// (it invalidates the token at GitHub), so it is gated behind an explicit
+    /// confirm per the 3.2.5 Definition of Done.
+    @State private var confirmingRevoke = false
+
     var body: some View {
         Section {
             switch auth.state {
@@ -598,6 +603,23 @@ private struct LeaderboardAccountSection: View {
             )
             .font(.caption)
             .foregroundStyle(.secondary)
+        }
+        // Revoke is irreversible (invalidates the token at GitHub), so it is gated
+        // behind an explicit confirmation per the 3.2.5 Definition of Done.
+        .confirmationDialog(
+            "Revoke access to GitHub?",
+            isPresented: $confirmingRevoke,
+            titleVisibility: .visible
+        ) {
+            Button("Revoke access", role: .destructive) {
+                Task { await auth.revoke() }
+            }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text(
+                "This invalidates Burnbar's token at GitHub and signs you out. "
+                    + "You'll need to sign in again to publish to the leaderboard."
+            )
         }
     }
 
@@ -635,7 +657,10 @@ private struct LeaderboardAccountSection: View {
             Label("Signed in to GitHub", systemImage: "checkmark.circle.fill")
                 .foregroundStyle(.green)
             Spacer()
+            // "Sign out" clears only the local Keychain token; "Revoke access"
+            // additionally invalidates it at GitHub (behind a confirm).
             Button("Sign out") { auth.signOut() }
+            Button("Revoke access", role: .destructive) { confirmingRevoke = true }
         }
     }
 
