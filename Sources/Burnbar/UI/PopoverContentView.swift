@@ -1,9 +1,11 @@
+import AppKit
 import BurnbarCore
 import SwiftUI
 
 /// The popover's glance UI: a header, one `ProviderTileView` per provider for
-/// today's usage, and a footer with the last-updated time. Burn bars (1.5.3)
-/// and the full quick-action row (1.5.4) extend this.
+/// today's usage, a last-updated line, and a quick-action row (1.5.4) with
+/// Refresh now / Settings… / Quit. Burn bars (1.5.3) sit between the tiles and
+/// the actions.
 struct PopoverContentView: View {
     let store: UsageStore
 
@@ -98,14 +100,41 @@ struct PopoverContentView: View {
         .padding(.vertical, 16)
     }
 
+    /// Last-updated line plus the quick-action row (1.5.4). Every action is one
+    /// click: "Refresh now" re-reads usage (which posts `.burnbarDidRefresh` so
+    /// tiles/bars update), "Settings…" opens the SwiftUI `Settings` scene, and
+    /// "Quit" terminates the agent. The same three actions back the status item's
+    /// right-click menu in `MenuBarController`.
     private var footer: some View {
-        HStack {
+        VStack(alignment: .leading, spacing: 8) {
             Text(updatedText)
                 .font(.caption2)
                 .foregroundStyle(.secondary)
-            Spacer()
-            Button("Quit") { NSApplication.shared.terminate(nil) }
-                .controlSize(.small)
+
+            HStack(spacing: 8) {
+                Button {
+                    store.refresh()
+                } label: {
+                    Label("Refresh now", systemImage: "arrow.clockwise")
+                }
+                .disabled(store.isLoading)
+
+                Button {
+                    MenuActions.openSettings()
+                } label: {
+                    Label("Settings…", systemImage: "gearshape")
+                }
+
+                Spacer()
+
+                Button {
+                    MenuActions.quit()
+                } label: {
+                    Label("Quit", systemImage: "power")
+                }
+            }
+            .labelStyle(.titleOnly)
+            .controlSize(.small)
         }
     }
 

@@ -10,17 +10,19 @@ import SwiftUI
 /// `ProviderTileView` per provider. Data comes from `UsageStore`, refreshed on
 /// launch and whenever the popover opens.
 @MainActor
-final class MenuBarController {
+final class MenuBarController: NSObject {
     private let statusItem: NSStatusItem
     private let popover: NSPopover
     private let store = UsageStore()
 
-    init() {
+    override init() {
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
 
         popover = NSPopover()
         popover.behavior = .transient
         popover.contentViewController = NSHostingController(rootView: PopoverContentView(store: store))
+
+        super.init()
 
         if let button = statusItem.button {
             let image = NSImage(systemSymbolName: "flame.fill", accessibilityDescription: "Burnbar")
@@ -29,7 +31,12 @@ final class MenuBarController {
             button.imagePosition = .imageLeading
             button.toolTip = "Burnbar"
             button.target = self
-            button.action = #selector(togglePopover)
+            button.action = #selector(handleClick)
+            // Left-click toggles the popover; right-click shows the context menu.
+            // Routing both buttons through one action lets us branch on the event
+            // type without assigning `statusItem.menu` (which would steal the
+            // left-click and pop the menu on every press).
+            button.sendAction(on: [.leftMouseUp, .rightMouseUp])
         }
 
         // Refresh the status-item title whenever a load completes.
@@ -44,9 +51,23 @@ final class MenuBarController {
         store.refresh()
     }
 
+    /// Routes a status-item click: right-click (or control-click) shows the
+    /// context menu; any other click toggles the popover. Left-click behavior is
+    /// unchanged from 1.5.1.
+    @objc private func handleClick() {
+        let event = NSApp.currentEvent
+        let isRightClick = event?.type == .rightMouseUp
+            || (event?.type == .leftMouseUp && event?.modifierFlags.contains(.control) == true)
+        if isRightClick {
+            showContextMenu()
+        } else {
+            togglePopover()
+        }
+    }
+
     /// Show/hide the popover anchored under the status-item button. Opening the
     /// popover triggers a fresh load so the glance is current.
-    @objc private func togglePopover() {
+    private func togglePopover() {
         guard let button = statusItem.button else { return }
         if popover.isShown {
             popover.performClose(nil)
@@ -55,6 +76,48 @@ final class MenuBarController {
             popover.show(relativeTo: button.bounds, of: button, preferredEdge: .minY)
             popover.contentViewController?.view.window?.makeKey()
         }
+    }
+
+    /// Present the right-click context menu under the status item with the same
+    /// three quick actions as the popover footer (1.5.4): Refresh now, Settings…,
+    /// Quit. The menu is built fresh and assigned only for this click, then
+    /// cleared in `menuDidClose` so it never hijacks a left-click.
+    private func showContextMenu() {
+        if popover.isShown { popover.performClose(nil) }
+
+        let menu = NSMenu()
+        menu.delegate = self
+
+        let refresh = NSMenuItem(title: "Refresh now", action: #selector(refreshNow), keyEquivalent: "")
+        refresh.target = self
+        menu.addItem(refresh)
+
+        let settings = NSMenuItem(title: "Settings…", action: #selector(openSettings), keyEquivalent: "")
+        settings.target = self
+        menu.addItem(settings)
+
+        menu.addItem(.separator())
+
+        let quit = NSMenuItem(title: "Quit Burnbar", action: #selector(quit), keyEquivalent: "q")
+        quit.target = self
+        menu.addItem(quit)
+
+        statusItem.menu = menu
+        statusItem.button?.performClick(nil)
+    }
+
+    // MARK: - Quick actions (shared by the popover footer and the context menu)
+
+    @objc private func refreshNow() {
+        store.refresh()
+    }
+
+    @objc private func openSettings() {
+        MenuActions.openSettings()
+    }
+
+    @objc private func quit() {
+        MenuActions.quit()
     }
 
     /// Update the status-item title from the latest load: today's total spend
@@ -68,6 +131,34 @@ final class MenuBarController {
             button.title = ""
             button.toolTip = "Burnbar"
         }
+    }
+}
+
+extension MenuBarController: NSMenuDelegate {
+    /// Clear the status item's menu once the context menu closes so the next
+    /// left-click toggles the popover instead of reopening the menu.
+    nonisolated func menuDidClose(_: NSMenu) {
+        MainActor.assumeIsolated {
+            statusItem.menu = nil
+        }
+    }
+}
+
+/// Quick actions shared by the popover footer (SwiftUI) and the status-item
+/// context menu (AppKit), so both reach the same behavior in one place.
+@MainActor
+enum MenuActions {
+    /// Open the SwiftUI `Settings` scene declared in `BurnbarApp`. macOS 14
+    /// renamed the private selector to `showSettingsWindow:`; sending it to the
+    /// responder chain (`to: nil`) routes it to the `Settings` scene.
+    static func openSettings() {
+        NSApp.activate(ignoringOtherApps: true)
+        NSApp.sendAction(Selector(("showSettingsWindow:")), to: nil, from: nil)
+    }
+
+    /// Terminate the agent cleanly.
+    static func quit() {
+        NSApplication.shared.terminate(nil)
     }
 }
 
