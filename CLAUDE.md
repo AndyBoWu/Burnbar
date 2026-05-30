@@ -66,9 +66,9 @@ Leaderboard upload (M3) aggregates *across* machines first (via the M2 reconcile
 - `./Scripts/install_launchagent.sh [app] | --uninstall` — install/remove the login LaunchAgent (`~/Library/LaunchAgents/xyz.andybowu.Burnbar.plist`) (1.6.3).
 - `./Scripts/make_dmg.sh` — wrap the ad-hoc-signed `Burnbar.app` (reused from a prior Release build, else built) into a drag-to-Applications `dist/Burnbar-vX.Y.Z.dmg` (prints sha256) (1.6.2). Prefers `create-dmg` (`brew install create-dmg`) for a styled window; falls back to plain `hdiutil` if the Finder styling step fails (e.g. headless/CI). Drag-install works either way.
 
-- `make scan-secrets` — scan the full git history for committed secrets via `gitleaks git` (config in `.gitleaks.toml`). Requires `brew install gitleaks`. The CI `Secret scan` workflow runs this on every push/PR; the lefthook pre-commit also scans staged changes when gitleaks is installed.
+- `make scan-secrets` — scan the full git history for committed secrets via `gitleaks git` (config in `.gitleaks.toml`). Requires `brew install gitleaks`. The lefthook pre-commit also scans staged changes when gitleaks is installed; GitHub Push Protection is the server-side backstop once the repo is public.
 
-Pre-commit is optional: `brew install lefthook && lefthook install` wires `lefthook.yml` to run `make lint` **and** a gitleaks secret scan on every commit, blocking style violations and secret leaks. Lefthook is **not** guaranteed installed in CI/agent environments — run `make lint` manually before commits and handoffs (the reliable path); the `Secret scan` CI job is the always-on secret backstop.
+Pre-commit is optional: `brew install lefthook && lefthook install` wires `lefthook.yml` to run `make lint` **and** a gitleaks secret scan on every commit, blocking style violations and secret leaks. Lefthook is **not** guaranteed installed in CI/agent environments — run `make lint` manually before commits and handoffs (the reliable path). For secrets, the server-side backstop is GitHub Push Protection (enable once the repo is public); `make scan-secrets` audits full history on demand.
 
 _Planned (each lands with its sub-ticket; update this section in the same PR):_
 

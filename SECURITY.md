@@ -25,5 +25,6 @@ Burnbar's privacy posture is core to the project. Reports we especially want:
 
 - The committed GitHub App `client_id` is public by design; the `client_secret`
   is never committed (it lives only in the Cloudflare Worker env).
-- Secrets are kept out of the repo by `.gitignore`, a gitleaks pre-commit hook,
-  and a gitleaks CI job scanning full history. See the contributing notes.
+- Secrets are kept out of the repo by `.gitignore` and a gitleaks pre-commit
+  hook (`make scan-secrets` audits full history on demand). Once the repo is
+  public, GitHub Push Protection blocks secret pushes server-side.
