@@ -175,7 +175,7 @@ final class OfflineUploadQueueTests: XCTestCase {
 
         // Succeed on the first item, then the connection drops mid-drain (throw).
         await XCTAssertThrowsErrorAsync(
-            try queue.drain { item in
+            try await queue.drain { item in
                 if item.date == "2026-05-28" { throw CutNetwork() }
                 return true
             }
