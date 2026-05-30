@@ -1,0 +1,19 @@
+# Next.js
+/.next/
+/out/
+
+# Cloudflare next-on-pages
+/.vercel/
+/.wrangler/
+
+# Dependencies
+/node_modules/
+
+# Build / debug logs
+*.tsbuildinfo
+next-env.d.ts
+npm-debug.log*
+pnpm-debug.log*
+
+# Env
+.env*.local
