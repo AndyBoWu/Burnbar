@@ -289,10 +289,10 @@ final class GitHubDeviceFlowTests: XCTestCase {
 
     // MARK: - Defaults
 
-    func testPlaceholderClientIDIsTheDefault() {
+    func testDefaultClientIDIsTheRegisteredGitHubApp() {
         let flow = GitHubDeviceFlow()
-        XCTAssertEqual(flow.clientID, "REPLACE_AFTER_GITHUB_APP_REGISTRATION")
-        XCTAssertEqual(GitHubDeviceFlow.placeholderClientID, "REPLACE_AFTER_GITHUB_APP_REGISTRATION")
+        XCTAssertEqual(flow.clientID, GitHubDeviceFlow.defaultClientID)
+        XCTAssertEqual(GitHubDeviceFlow.defaultClientID, "Iv23liZtq4q4ukHeLwsh")
     }
 }
 
