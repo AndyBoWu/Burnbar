@@ -5,15 +5,16 @@ import SwiftUI
 /// Burnbar runs as a menu-bar agent (`LSUIElement = YES`, no Dock icon).
 ///
 /// The menu-bar `NSStatusItem` is owned by `MenuBarController`, created by
-/// `AppDelegate` at launch (Epic 1.5.1). The SwiftUI `Settings` scene is a
-/// placeholder until the real Settings window lands in Epic 1.5.5.
+/// `AppDelegate` at launch (Epic 1.5.1). The SwiftUI `Settings` scene hosts the
+/// three-tab Settings window (Epic 1.5.5); macOS wires it to `⌘,` and gives it a
+/// non-modal, single-instance window whose close leaves the agent running.
 @main
 struct BurnbarApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
 
     var body: some Scene {
         Settings {
-            EmptyView()
+            SettingsView()
         }
     }
 }
