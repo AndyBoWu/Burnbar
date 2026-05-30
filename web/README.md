@@ -37,6 +37,24 @@ npm run deploy:prod
 Secrets (e.g. the GitHub App `client_secret` for Epic 3.2) are set via
 `wrangler secret put <NAME> --env <env>` and are **never** committed.
 
+## TLS / HTTPS (3.6.3)
+
+The leaderboard is HTTPS-only. Responsibilities split between the operator's
+Cloudflare zone settings and this Worker:
+
+- **Operator (Cloudflare zone settings, one-time):**
+  - Enable **Universal SSL** for the Pages custom domain so a certificate is
+    issued and validated for `burnbar.andybowu.xyz`.
+  - Enable **Always Use HTTPS** on the `andybowu.xyz` zone (or a scoped redirect
+    rule) so `http://` requests return a `301` to `https://`.
+  - Set the **SSL/TLS mode to Full (strict)** for end-to-end TLS.
+  - Record the SSL Labs grade (target ≥ A) here once the domain is live.
+- **This Worker:** sets `Strict-Transport-Security: max-age=63072000; includeSubDomains; preload`
+  on **every** response (see the `app.use('*', ...)` middleware in
+  [`src/app.ts`](src/app.ts)). This tells browsers to never speak plain HTTP to
+  the domain again. The Worker does not perform the redirect itself — that is the
+  operator's "Always Use HTTPS" zone setting above.
+
 ## Endpoints
 
 Documented in this README as Epic 3.1.3 (#49) lands them: `POST /api/v1/usage`,
