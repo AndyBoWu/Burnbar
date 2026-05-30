@@ -51,6 +51,17 @@ final class AuthController {
     /// real ``GitHubTokenRevoker`` configured below.
     private let revokeToken: @Sendable (_ token: String) async throws -> Void
 
+    /// Sends `DELETE /api/v1/me` to erase the user's server-side leaderboard data
+    /// (``deleteAllData()``), injected so the network call is exercised in tests
+    /// without real HTTP. Production wires the real ``AccountDeleter`` configured
+    /// below.
+    private let deleteAccount: @Sendable () async throws -> Void
+
+    /// Resets the persisted leaderboard opt-in / timestamp / login on a successful
+    /// account delete. Injected so the teardown is testable without touching the
+    /// shared `UserDefaults`. Production wires ``UploadPreferences/reset(in:)``.
+    private let resetPreferences: @MainActor () -> Void
+
     /// Pasteboard writer for "Copy code"; injected so the copy action is testable
     /// without touching the real `NSPasteboard`.
     private let copyToPasteboard: @MainActor (_ text: String) -> Void
@@ -69,6 +80,12 @@ final class AuthController {
     ///   - revoker: GitHub token-revocation client (#56). Defaults to the live
     ///     ``GitHubTokenRevoker``; injected so ``revoke()`` is unit-tested without
     ///     real network.
+    ///   - deleter: Account-delete client (#68). Defaults to a live
+    ///     ``AccountDeleter`` pointed at the production API and reading the
+    ///     Keychain token; injected so ``deleteAllData()`` is unit-tested without
+    ///     real network.
+    ///   - resetPreferences: Clears the persisted leaderboard opt-in / timestamp /
+    ///     login on a successful delete. Defaults to ``UploadPreferences/reset(in:)``.
     ///   - openURL: Opens a URL in the default browser. Defaults to
     ///     `NSWorkspace.shared.open`.
     ///   - copyToPasteboard: Writes text to the general pasteboard. Defaults to a
@@ -77,6 +94,8 @@ final class AuthController {
         deviceFlow: GitHubDeviceFlow = GitHubDeviceFlow(),
         tokenStore: KeychainTokenStore = KeychainTokenStore(),
         revoker: GitHubTokenRevoker = GitHubTokenRevoker(),
+        deleter: AccountDeleter = AuthController.defaultAccountDeleter(),
+        resetPreferences: @escaping @MainActor () -> Void = { UploadPreferences.reset() },
         openURL: @escaping @Sendable (URL) -> Void = { NSWorkspace.shared.open($0) },
         copyToPasteboard: @escaping @MainActor (String) -> Void = AuthController.writeToGeneralPasteboard
     ) {
@@ -98,6 +117,8 @@ final class AuthController {
         readToken = { (try? tokenStore.read()).flatMap(\.self) }
         clearToken = { try? tokenStore.delete() }
         revokeToken = { try await revoker.revoke(token: $0) }
+        deleteAccount = { try await deleter.deleteAccount() }
+        self.resetPreferences = resetPreferences
         self.copyToPasteboard = copyToPasteboard
 
         if hasStoredToken() {
@@ -190,6 +211,58 @@ final class AuthController {
 
         clearToken()
         state = .signedOut
+    }
+
+    /// Erase **all** of the user's data — server-side rows *and* local
+    /// credentials — then return to ``SignInState/signedOut`` (sub-ticket 3.5.2).
+    ///
+    /// Sends `DELETE /api/v1/me` with the Keychain bearer token (the server
+    /// resolves the `github_id` from the token and removes the user's `users` and
+    /// `daily_usage` rows; the request carries no identifying body). **Only on
+    /// success** does the local teardown run — delete the Keychain token, reset the
+    /// leaderboard opt-in / timestamp / login — so a failed server delete never
+    /// strands the user with no local credentials while their rows still exist
+    /// server-side (the same order-matters discipline as ``revoke()``).
+    ///
+    /// After a successful run nothing local remains (no token, opt-in OFF), so the
+    /// user can re-join cleanly — signing in again creates a fresh record (the
+    /// 3.5.2 Definition of Done). On failure the session is left intact and a
+    /// plain-English message is surfaced via ``SignInState/failed(message:)``. With
+    /// no stored token there is nothing to delete, so this degenerates to a local
+    /// teardown + ``SignInState/signedOut``.
+    func deleteAllData() async {
+        task?.cancel()
+        task = nil
+
+        if readToken() != nil {
+            do {
+                try await deleteAccount()
+            } catch {
+                // Server delete failed (network/host/auth). Keep the session and
+                // local state so the user can retry; surface a plain-English
+                // message (the deleter's `DeleteError` descriptions are user-ready).
+                let detail = (error as? CustomStringConvertible)?.description
+                state = .failed(message: detail ?? "Couldn't delete your data. Please try again.")
+                return
+            }
+        }
+
+        // Server rows are gone (or there was no session) — tear down locally so no
+        // token or opt-in lingers and re-join starts clean.
+        clearToken()
+        resetPreferences()
+        state = .signedOut
+    }
+
+    /// Live ``AccountDeleter`` for production: points at the Burnbar API and reads
+    /// the GitHub bearer token from the Keychain lazily at call time (so a token
+    /// that changed since construction is still honoured, and a signed-out state
+    /// fails fast before any request).
+    static func defaultAccountDeleter() -> AccountDeleter {
+        AccountDeleter(
+            apiBase: LeaderboardUploadModel.apiBase,
+            token: { (try? KeychainTokenStore().read()).flatMap(\.self) }
+        )
     }
 
     /// Real pasteboard write used in production: clear the general pasteboard and
