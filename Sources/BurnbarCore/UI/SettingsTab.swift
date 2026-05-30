@@ -14,6 +14,7 @@ public enum SettingsTab: String, CaseIterable, Identifiable, Sendable {
     case general
     case providers
     case devices
+    case leaderboard
     case about
 
     public var id: String { rawValue }
@@ -25,6 +26,7 @@ public enum SettingsTab: String, CaseIterable, Identifiable, Sendable {
         case .general: return "General"
         case .providers: return "Providers"
         case .devices: return "Devices"
+        case .leaderboard: return "Leaderboard"
         case .about: return "About"
         }
     }
@@ -35,6 +37,7 @@ public enum SettingsTab: String, CaseIterable, Identifiable, Sendable {
         case .general: return "gearshape"
         case .providers: return "square.stack.3d.up"
         case .devices: return "laptopcomputer"
+        case .leaderboard: return "trophy"
         case .about: return "info.circle"
         }
     }
