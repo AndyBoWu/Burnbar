@@ -86,6 +86,15 @@ function validateUserFlags(body: unknown): { ok: true; value: UserFlags } | { ok
 export function createApp(deps: Deps): Hono<{ Bindings: Env; Variables: { identity: Identity } }> {
   const app = new Hono<{ Bindings: Env; Variables: { identity: Identity } }>()
 
+  // Force HTTPS via HSTS on every response (3.6.3). Universal SSL and the
+  // HTTP→HTTPS redirect are Cloudflare zone settings the operator enables; this
+  // header tells browsers to never speak plain HTTP to the domain again.
+  // 2 years (63072000s) + includeSubDomains + preload meets the HSTS preload-list bar.
+  app.use('*', async (c, next) => {
+    await next()
+    c.header('Strict-Transport-Security', 'max-age=63072000; includeSubDomains; preload')
+  })
+
   // Structured request log for every response (feeds Workers Logs / the dashboard).
   app.use('*', async (c, next) => {
     const start = Date.now()
