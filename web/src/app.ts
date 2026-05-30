@@ -1,6 +1,6 @@
 import { type Context, Hono, type Next } from 'hono'
 import { type AuthVerifier, bearerToken, githubTokenVerifier, type Identity } from './auth'
-import { deleteMe, ensureUser, getMe, leaderboard, PERIODS, type Period, PROVIDERS, type Provider, updateUserFlags, type UserFlags, upsertUsage } from './db'
+import { deleteMe, ensureUser, getMe, leaderboard, PERIODS, type Period, PROVIDERS, type Provider, publicProfile, updateUserFlags, type UserFlags, upsertUsage } from './db'
 import { logError, logRequest } from './log'
 import { checkRateLimit, RATE_LIMITS } from './ratelimit'
 
@@ -144,6 +144,21 @@ export function createApp(deps: Deps): Hono<{ Bindings: Env; Variables: { identi
     }
     const rows = await leaderboard(c.env.DB, period as Period, deps.now())
     return c.json({ period, entries: rows })
+  })
+
+  // Public per-user profile (3.4.4). No auth; IP rate-limited like the
+  // leaderboard. Returns the last-90-days burn series ONLY for opted-in,
+  // non-hidden users — hidden/opted-out/unknown all 404 with no history leak.
+  app.get('/api/v1/u/:login', async (c) => {
+    if (c.env.RATE_LIMIT) {
+      const ip = c.req.header('CF-Connecting-IP') ?? 'unknown'
+      const rl = await checkRateLimit(c.env.RATE_LIMIT, `ip:${ip}`, RATE_LIMITS.perIpPerMinute, RATE_LIMITS.windowSeconds, deps.now().getTime())
+      if (!rl.allowed) return c.json({ error: 'rate limit exceeded' }, 429)
+    }
+    const login = c.req.param('login')
+    const profile = await publicProfile(c.env.DB, login, deps.now())
+    if (!profile) return c.json({ error: 'not found' }, 404)
+    return c.json(profile)
   })
 
   app.get('/api/v1/me', requireAuth, async (c) => {
