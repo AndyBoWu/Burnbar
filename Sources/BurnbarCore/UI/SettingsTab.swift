@@ -1,6 +1,6 @@
 import Foundation
 
-/// The three tabs of the Settings window (Epic 1.5.5).
+/// The tabs of the Settings window (Epic 1.5.5; `devices` added in 2.1.3).
 ///
 /// This is the pure, view-agnostic model of the tab strip: stable identity,
 /// English titles, and SF Symbol names. Keeping it in `BurnbarCore` (rather than
@@ -8,10 +8,12 @@ import Foundation
 /// gives 1.5.6 / the popover's "Open Settings" action a stable case to deep-link.
 ///
 /// Scaffold scope: identity + labels only. The actual controls (theme, refresh
-/// rate, provider toggles, links) are added in 1.5.6.
+/// rate, provider toggles, the Devices this-Mac row, links) are added in 1.5.6 /
+/// 2.1.3.
 public enum SettingsTab: String, CaseIterable, Identifiable, Sendable {
     case general
     case providers
+    case devices
     case about
 
     public var id: String { rawValue }
@@ -22,6 +24,7 @@ public enum SettingsTab: String, CaseIterable, Identifiable, Sendable {
         switch self {
         case .general: return "General"
         case .providers: return "Providers"
+        case .devices: return "Devices"
         case .about: return "About"
         }
     }
@@ -31,6 +34,7 @@ public enum SettingsTab: String, CaseIterable, Identifiable, Sendable {
         switch self {
         case .general: return "gearshape"
         case .providers: return "square.stack.3d.up"
+        case .devices: return "laptopcomputer"
         case .about: return "info.circle"
         }
     }

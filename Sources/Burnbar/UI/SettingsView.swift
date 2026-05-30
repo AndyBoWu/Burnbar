@@ -7,11 +7,13 @@ import SwiftUI
 /// gives it for free a non-modal, single-instance window, and — because the app
 /// is an `LSUIElement` agent — closing it leaves the menu-bar status item alive.
 ///
-/// **Content (1.5.6).** Each tab now hosts real, persisted controls:
+/// **Content (1.5.6 / 2.1.3).** Each tab now hosts real, persisted controls:
 /// - **General** — theme (auto/light/dark, applied live to `NSApp.appearance`)
 ///   and the background refresh cadence.
 /// - **Providers** — enable/disable Claude and Codex; the flags gate the parsers
 ///   in `UsageStore` (a disabled provider's tile drops from the popover).
+/// - **Devices** — this Mac's `machine_id`, an editable label, and a "Last
+///   synced" placeholder row (wired to real timestamps by Epic 2.2).
 /// - **About** — app version, GitHub, and privacy links.
 ///
 /// Every control persists via `@AppStorage`/`UserDefaults` (keys in
@@ -43,6 +45,8 @@ struct SettingsView: View {
             GeneralSettingsView()
         case .providers:
             ProvidersSettingsView()
+        case .devices:
+            DevicesSettingsView()
         case .about:
             AboutSettingsView()
         }
@@ -127,6 +131,79 @@ private struct ProvidersSettingsView: View {
 
     private func notifyChanged() {
         NotificationCenter.default.post(name: .burnbarSettingsDidChange, object: nil)
+    }
+}
+
+// MARK: - Devices
+
+/// This Mac's identity row (2.1.3): the opaque `machine_id`, an editable label,
+/// and a "Last synced" placeholder.
+///
+/// - **Machine id** comes from `MachineIdentity.current` — a stable, truncated
+///   `SHA-256` digest (16 hex chars). Shown read-only and monospaced.
+/// - **Label** is bound to a `MachineLabel` store: typing edits a local `@State`
+///   draft and commits to `rename(to:)` on each change, so the override persists
+///   to `UserDefaults` and survives relaunch. The placeholder shows the system
+///   computer name (the store's default), so clearing the field reverts to it.
+/// - **Last synced** is a placeholder ("Never") rendered by
+///   `LastSyncedDisplay`; Epic 2.2's WriteController feeds it real timestamps.
+///
+/// Single-machine scope per #31 — the full multi-machine table is 2.4.4. The
+/// store is constructed once on `.standard` defaults; English-only literals
+/// throughout, per CLAUDE.md.
+private struct DevicesSettingsView: View {
+    /// The label store for this Mac (system computer name by default; user
+    /// override persisted under `MachineLabel.defaultsKey`).
+    private let labelStore = MachineLabel()
+
+    /// This Mac's stable, truncated machine id.
+    private let machineID = MachineIdentity.current()
+
+    /// The text being edited, seeded from the persisted label. Kept in `@State`
+    /// so the field reflects edits immediately; committed to the store on change.
+    @State private var draftLabel = MachineLabel().label
+
+    var body: some View {
+        Form {
+            Section {
+                LabeledContent("Name") {
+                    TextField(
+                        "Name",
+                        text: $draftLabel,
+                        prompt: Text(MachineLabel.systemComputerName())
+                    )
+                    .labelsHidden()
+                    .textFieldStyle(.roundedBorder)
+                    .frame(maxWidth: 220)
+                }
+
+                LabeledContent("Machine ID") {
+                    Text(machineID)
+                        .font(.system(.body, design: .monospaced))
+                        .foregroundStyle(.secondary)
+                        .textSelection(.enabled)
+                }
+
+                LabeledContent("Last synced") {
+                    Text(LastSyncedDisplay.text(for: nil))
+                        .foregroundStyle(.secondary)
+                }
+            } header: {
+                Text("This Mac")
+            } footer: {
+                Text("Your machine ID is a one-way hash of this Mac's hardware ID — it never leaves your device.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .formStyle(.grouped)
+        // Persist every keystroke through the store so the override survives
+        // relaunch and a freshly constructed store sees the same value. An empty
+        // field clears the override and reverts to the system name (handled by
+        // `MachineLabel.rename`).
+        .onChange(of: draftLabel) { _, newValue in
+            labelStore.rename(to: newValue)
+        }
     }
 }
 
