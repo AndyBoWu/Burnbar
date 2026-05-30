@@ -108,6 +108,92 @@ describe('GET /api/v1/me', () => {
   })
 })
 
+describe('PATCH /api/v1/me', () => {
+  it('hiding via PATCH removes the user from the leaderboard (DoD)', async () => {
+    const { app, env, raw, authed } = setup()
+    // Two opted-in users both rank initially.
+    await app.request('/api/v1/usage', { method: 'POST', headers: authed('good'), body: JSON.stringify({ ...validBody, tokens: 500 }) }, env)
+    await app.request('/api/v1/usage', { method: 'POST', headers: authed('good2'), body: JSON.stringify({ ...validBody, tokens: 900 }) }, env)
+    const before = (await (await app.request('/api/v1/leaderboard/daily', {}, env)).json()) as { entries: { github_login: string }[] }
+    expect(before.entries.map((e) => e.github_login)).toEqual(['hubot', 'octocat'])
+
+    const patch = await app.request('/api/v1/me', { method: 'PATCH', headers: authed('good'), body: JSON.stringify({ hidden: true }) }, env)
+    expect(patch.status).toBe(200)
+    expect(((await patch.json()) as { hidden: boolean }).hidden).toBe(true)
+    expect((raw.prepare('SELECT hidden FROM users WHERE github_id = 1').get() as { hidden: number }).hidden).toBe(1)
+
+    const after = (await (await app.request('/api/v1/leaderboard/daily', {}, env)).json()) as { entries: { github_login: string }[] }
+    expect(after.entries.map((e) => e.github_login)).toEqual(['hubot'])
+  })
+
+  it('unhiding via PATCH restores the user to the leaderboard', async () => {
+    const { app, env, authed } = setup()
+    await app.request('/api/v1/usage', { method: 'POST', headers: authed('good'), body: JSON.stringify(validBody) }, env)
+    await app.request('/api/v1/me', { method: 'PATCH', headers: authed('good'), body: JSON.stringify({ hidden: true }) }, env)
+    expect((((await (await app.request('/api/v1/leaderboard/daily', {}, env)).json()) as { entries: unknown[] }).entries)).toHaveLength(0)
+    await app.request('/api/v1/me', { method: 'PATCH', headers: authed('good'), body: JSON.stringify({ hidden: false }) }, env)
+    const entries = ((await (await app.request('/api/v1/leaderboard/daily', {}, env)).json()) as { entries: { github_login: string }[] }).entries
+    expect(entries.map((e) => e.github_login)).toEqual(['octocat'])
+  })
+
+  it('still returns the hidden user full history via GET /api/v1/me', async () => {
+    const { app, env, authed } = setup()
+    await app.request('/api/v1/usage', { method: 'POST', headers: authed(), body: JSON.stringify(validBody) }, env)
+    await app.request('/api/v1/me', { method: 'PATCH', headers: authed(), body: JSON.stringify({ hidden: true }) }, env)
+    const body = (await (await app.request('/api/v1/me', { headers: authed() }, env)).json()) as { hidden: boolean; history: unknown[] }
+    expect(body.hidden).toBe(true)
+    expect(body.history).toHaveLength(1)
+  })
+
+  it('updates opted_in independently of hidden', async () => {
+    const { app, env, raw, authed } = setup()
+    await app.request('/api/v1/usage', { method: 'POST', headers: authed(), body: JSON.stringify(validBody) }, env)
+    const res = await app.request('/api/v1/me', { method: 'PATCH', headers: authed(), body: JSON.stringify({ opted_in: false }) }, env)
+    expect(res.status).toBe(200)
+    const row = raw.prepare('SELECT opted_in, hidden FROM users WHERE github_id = 1').get() as { opted_in: number; hidden: number }
+    expect(row).toMatchObject({ opted_in: 0, hidden: 0 })
+  })
+
+  it('can set flags before any upload (creates the user row)', async () => {
+    const { app, env, raw, authed } = setup()
+    const res = await app.request('/api/v1/me', { method: 'PATCH', headers: authed(), body: JSON.stringify({ hidden: true }) }, env)
+    expect(res.status).toBe(200)
+    const row = raw.prepare('SELECT hidden FROM users WHERE github_id = 1').get() as { hidden: number }
+    expect(row.hidden).toBe(1)
+  })
+
+  it('rejects extra keys not in the allowlist (400)', async () => {
+    const { app, env, authed } = setup()
+    const res = await app.request('/api/v1/me', { method: 'PATCH', headers: authed(), body: JSON.stringify({ hidden: true, github_id: 999 }) }, env)
+    expect(res.status).toBe(400)
+    expect(((await res.json()) as { error: string }).error).toContain('unexpected keys')
+  })
+
+  it('rejects a non-boolean flag value (400)', async () => {
+    const { app, env, authed } = setup()
+    const res = await app.request('/api/v1/me', { method: 'PATCH', headers: authed(), body: JSON.stringify({ hidden: 'yes' }) }, env)
+    expect(res.status).toBe(400)
+  })
+
+  it('rejects an empty body with no flags (400)', async () => {
+    const { app, env, authed } = setup()
+    const res = await app.request('/api/v1/me', { method: 'PATCH', headers: authed(), body: JSON.stringify({}) }, env)
+    expect(res.status).toBe(400)
+  })
+
+  it('rejects invalid JSON (400)', async () => {
+    const { app, env, authed } = setup()
+    const res = await app.request('/api/v1/me', { method: 'PATCH', headers: authed(), body: 'not json' }, env)
+    expect(res.status).toBe(400)
+  })
+
+  it('rejects missing auth (401)', async () => {
+    const { app, env } = setup()
+    const res = await app.request('/api/v1/me', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ hidden: true }) }, env)
+    expect(res.status).toBe(401)
+  })
+})
+
 describe('DELETE /api/v1/me', () => {
   it('deletes the user and all their usage (204)', async () => {
     const { app, env, raw, authed } = setup()

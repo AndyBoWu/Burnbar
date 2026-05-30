@@ -94,6 +94,35 @@ export async function getMe(db: D1Database, githubId: number): Promise<MeRespons
   }
 }
 
+export interface UserFlags {
+  hidden?: boolean
+  opted_in?: boolean
+}
+
+/**
+ * Update the authenticated user's privacy flags (`hidden` / `opted_in`).
+ * Only the flags present in `flags` are written; omitted flags are left as-is.
+ * Returns the number of rows changed (0 if the user row does not exist yet).
+ */
+export async function updateUserFlags(db: D1Database, githubId: number, flags: UserFlags): Promise<number> {
+  const sets: string[] = []
+  const values: number[] = []
+  if (flags.hidden !== undefined) {
+    sets.push('hidden = ?')
+    values.push(flags.hidden ? 1 : 0)
+  }
+  if (flags.opted_in !== undefined) {
+    sets.push('opted_in = ?')
+    values.push(flags.opted_in ? 1 : 0)
+  }
+  if (sets.length === 0) return 0
+  const result = await db
+    .prepare(`UPDATE users SET ${sets.join(', ')} WHERE github_id = ?`)
+    .bind(...values, githubId)
+    .run()
+  return result.meta.changes
+}
+
 export async function deleteMe(db: D1Database, githubId: number): Promise<void> {
   // daily_usage cascades via the FK, but delete explicitly too in case PRAGMA
   // foreign_keys is off on the connection.
