@@ -57,14 +57,13 @@ Leaderboard upload (M3) aggregates *across* machines first (via the M2 reconcile
 - `xcodegen generate` — regenerate `Burnbar.xcodeproj` from `project.yml`. Run after clone or after editing `project.yml`. Requires `brew install xcodegen`.
 - `xcodebuild -project Burnbar.xcodeproj -scheme Burnbar -destination 'platform=macOS' build` — build the app (add `CODE_SIGNING_ALLOWED=NO` for unsigned local builds).
 - `xcodebuild -project Burnbar.xcodeproj -scheme Burnbar -destination 'platform=macOS' test` — run `BurnbarCoreTests`.
+- `./Scripts/compile_and_run.sh` — regenerate the project, build Debug, and launch Burnbar.app from a clean clone (1.1.4).
 
 _Planned (each lands with its sub-ticket; update this section in the same PR):_
 
-- `./Scripts/compile_and_run.sh` — build + launch Burnbar.app from clean clone (1.1.4)
-- `./Scripts/package_app.sh` — Release build → ad-hoc signed `.zip`/`.dmg` (1.6.1, 1.6.2)
+- `./Scripts/package_app.sh` — **stubbed** pending Epic 1.6: Release build → ad-hoc signed `.zip`/`.dmg` (1.6.1, 1.6.2)
 - `./Scripts/update_cask.sh` — bump Homebrew tap cask version + sha256 after a release (1.6.5)
 - `make lint` — SwiftLint + SwiftFormat (1.1.2)
-- `xcodebuild test` — unit tests (CI runs this per 1.1.3)
 - `./Scripts/install_launchagent.sh` — install LaunchAgent for login auto-start (1.6.3)
 
 Update this section in the same PR that introduces each script.
