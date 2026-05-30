@@ -72,12 +72,12 @@ final class ReconcilerTests: XCTestCase {
         let byMachine: [String: [UsageRecord]] = [
             "mac-air": [
                 claude(day: "2026-05-29", input: 100, output: 50, cacheRead: 10, cacheCreation: 5, cost: 0.20),
-                codex(day: "2026-05-29", input: 300, cost: 0.30),
+                codex(day: "2026-05-29", input: 300, cost: 0.30)
             ],
             "mac-studio": [
                 claude(day: "2026-05-29", input: 200, output: 80, cacheRead: 20, cacheCreation: 7, cost: 0.40),
-                claude(day: "2026-05-28", input: 90, output: 30, cost: 0.10),
-            ],
+                claude(day: "2026-05-28", input: 90, output: 30, cost: 0.10)
+            ]
         ]
 
         let result = Reconciler().merge(byMachine)
@@ -86,7 +86,7 @@ final class ReconcilerTests: XCTestCase {
         // combined view's totals. Integer categories compare exactly; cost uses an
         // accuracy tolerance since float addition order differs between the flat
         // reference and the grouped sum.
-        let flat = byMachine.values.flatMap { $0 }
+        let flat = byMachine.values.flatMap(\.self)
         let combinedTotals = totals(result.combined)
         let flatTotals = totals(flat)
         XCTAssertEqual(combinedTotals.input, flatTotals.input)
@@ -106,7 +106,7 @@ final class ReconcilerTests: XCTestCase {
     func testOverlappingKeysAcrossMachinesCollapseAndSum() {
         let byMachine: [String: [UsageRecord]] = [
             "a": [claude(day: "2026-05-29", input: 100, output: 40, cacheRead: 10, cacheCreation: 2, cost: 0.10)],
-            "b": [claude(day: "2026-05-29", input: 200, output: 60, cacheRead: 30, cacheCreation: 8, cost: 0.25)],
+            "b": [claude(day: "2026-05-29", input: 200, output: 60, cacheRead: 30, cacheCreation: 8, cost: 0.25)]
         ]
 
         let result = Reconciler().merge(byMachine)
@@ -127,12 +127,12 @@ final class ReconcilerTests: XCTestCase {
         let byMachine: [String: [UsageRecord]] = [
             "a": [
                 claude(day: "2026-05-29", input: 100),
-                claude(model: "claude-sonnet-4-7", day: "2026-05-29", input: 50),
+                claude(model: "claude-sonnet-4-7", day: "2026-05-29", input: 50)
             ],
             "b": [
                 claude(day: "2026-05-28", input: 70),
-                codex(day: "2026-05-29", input: 300),
-            ],
+                codex(day: "2026-05-29", input: 300)
+            ]
         ]
 
         let result = Reconciler().merge(byMachine)
@@ -148,7 +148,7 @@ final class ReconcilerTests: XCTestCase {
     func testCodexNilCategoriesSurviveMerge() {
         let byMachine: [String: [UsageRecord]] = [
             "a": [codex(day: "2026-05-29", input: 300)],
-            "b": [codex(day: "2026-05-29", input: 200)],
+            "b": [codex(day: "2026-05-29", input: 200)]
         ]
 
         let result = Reconciler().merge(byMachine)
@@ -167,7 +167,7 @@ final class ReconcilerTests: XCTestCase {
     func testMixedNilAndPresentCategorySumsOnlyPresentValues() {
         let byMachine: [String: [UsageRecord]] = [
             "withOutput": [claude(day: "2026-05-29", input: 100, output: 40, cost: 0.10)],
-            "noOutput": [claude(day: "2026-05-29", input: 100, output: nil, cost: nil)],
+            "noOutput": [claude(day: "2026-05-29", input: 100, output: nil, cost: nil)]
         ]
 
         let result = Reconciler().merge(byMachine)
@@ -185,7 +185,7 @@ final class ReconcilerTests: XCTestCase {
         let records = [
             claude(day: "2026-05-29", input: 100, output: 50, cacheRead: 10, cacheCreation: 5, cost: 0.20),
             codex(day: "2026-05-29", input: 300, cost: 0.30),
-            claude(day: "2026-05-28", input: 80, output: 20),
+            claude(day: "2026-05-28", input: 80, output: 20)
         ]
         let byMachine = ["solo": records]
 
@@ -225,8 +225,8 @@ final class ReconcilerTests: XCTestCase {
                 codex(day: "2026-05-28", input: 1),
                 claude(model: "claude-sonnet-4-7", day: "2026-05-29", input: 1),
                 claude(model: "claude-opus-4-7", day: "2026-05-29", input: 1),
-                codex(day: "2026-05-29", input: 1),
-            ],
+                codex(day: "2026-05-29", input: 1)
+            ]
         ]
 
         let result = Reconciler().merge(byMachine)
@@ -238,7 +238,7 @@ final class ReconcilerTests: XCTestCase {
                 "2026-05-29|claude|claude-opus-4-7",
                 "2026-05-29|claude|claude-sonnet-4-7",
                 "2026-05-29|codex|gpt-5",
-                "2026-05-28|codex|gpt-5",
+                "2026-05-28|codex|gpt-5"
             ]
         )
     }
