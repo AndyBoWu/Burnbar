@@ -47,7 +47,7 @@ struct BurnBarView: View {
     let window: BurnWindow
 
     /// Clock used to compute the next reset. Injectable for previews/tests.
-    var clock: ResetClock = ResetClock()
+    var clock = ResetClock()
 
     /// Fraction filled, clamped to a drawable `0...1`.
     private var fraction: Double {
@@ -132,8 +132,8 @@ struct BurnBarView: View {
         let total = Int(seconds)
         guard total > 0 else { return "<1m" }
 
-        let days = total / 86_400
-        let hours = (total % 86_400) / 3600
+        let days = total / 86400
+        let hours = (total % 86400) / 3600
         let minutes = (total % 3600) / 60
 
         if days > 0 {
