@@ -1,7 +1,54 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 
-import { getLatestRelease, RELEASES_URL } from "@/app/lib/release";
+import {
+  getLatestRelease,
+  RELEASES_LATEST_URL,
+  RELEASES_URL,
+} from "@/app/lib/release";
+
+/** Burnbar source on GitHub — the "View source" trust-signal link. */
+const SOURCE_URL = "https://github.com/AndyBoWu/Burnbar";
+
+/**
+ * Format an ISO-8601 timestamp to a stable, locale-independent human date
+ * (e.g. `May 30, 2026`). Pinned to `en-US` + UTC so the build-time-rendered
+ * HTML is deterministic regardless of the build machine's locale/timezone.
+ * Returns `null` when the timestamp is missing or unparseable, so callers can
+ * omit the date rather than render `Invalid Date`.
+ */
+function formatReleaseDate(iso: string | null): string | null {
+  if (!iso) return null;
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return null;
+  return date.toLocaleDateString("en-US", {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+    timeZone: "UTC",
+  });
+}
+
+/**
+ * Format a byte count as `X.Y MB`. Returns `null` for non-positive/unknown
+ * sizes (the resolver uses `0` when GitHub omits the size) so callers can
+ * omit the row instead of rendering `0.0 MB` or `NaN`.
+ */
+function formatFileSize(bytes: number): string | null {
+  if (!Number.isFinite(bytes) || bytes <= 0) return null;
+  return `${(bytes / 1_000_000).toFixed(1)} MB`;
+}
+
+/**
+ * Split a `"sha256:<hex>"` digest into its hex value, or `null` when no digest
+ * is present (older assets may lack one — handle that case by linking to the
+ * release page instead of rendering `undefined`).
+ */
+function parseSha256(digest: string | null): string | null {
+  if (!digest) return null;
+  const hex = digest.startsWith("sha256:") ? digest.slice("sha256:".length) : digest;
+  return hex !== "" ? hex : null;
+}
 
 const LANDING_TITLE = "Burnbar — Track AI-coding token burn in your menu bar";
 const LANDING_DESCRIPTION =
@@ -170,6 +217,24 @@ export default async function HomePage() {
     : assetName.endsWith(".zip")
       ? "Unzip the download and move Burnbar.app into the Applications folder."
       : "Open the .dmg (or unzip the .zip) and move Burnbar.app into the Applications folder.";
+
+  // Download trust signals (issue #178): version/date/size/checksum/signing.
+  // Every value degrades gracefully — when the release API fell back or an
+  // older asset lacks a digest, we omit the row or link to the release page
+  // instead of ever rendering "undefined"/"NaN".
+  const releaseDate = formatReleaseDate(release.publishedAt);
+  const fileName = release.recommendedAsset?.name ?? null;
+  const fileSize = release.recommendedAsset
+    ? formatFileSize(release.recommendedAsset.size)
+    : null;
+  const sha256 = release.recommendedAsset
+    ? parseSha256(release.recommendedAsset.digest)
+    : null;
+  const signingStatus = IS_NOTARIZED
+    ? "Signed & notarized (Apple Developer ID)."
+    : "Ad-hoc signed — notarization in progress. Right-click → Open on first launch.";
+  // The specific release page; resolver falls back to /releases/latest.
+  const releaseNotesUrl = release.htmlUrl;
 
   return (
     <div className="flex min-h-screen flex-col">
@@ -488,6 +553,120 @@ export default async function HomePage() {
               </li>
             )}
           </ol>
+
+          {/*
+            Download trust signals (issue #178). A compact, glanceable panel so
+            users can verify what they're about to run: version + date, file
+            size, SHA-256 (or a link to the release assets when the digest is
+            absent), signing/notarization status, and release-notes/source
+            links. Every field is rendered conditionally — nothing here ever
+            shows "undefined"/"NaN" when the release API fell back.
+          */}
+          <dl className="mt-8 grid gap-x-8 gap-y-5 rounded-xl border border-zinc-800 bg-zinc-900/40 p-6 sm:grid-cols-2">
+            <div>
+              <dt className="text-xs font-medium uppercase tracking-wide text-zinc-500">
+                Version
+              </dt>
+              <dd className="mt-1 text-sm text-zinc-200">
+                {release.version ? (
+                  <>
+                    <span className="font-semibold text-zinc-100">
+                      {release.version}
+                    </span>
+                    {releaseDate ? (
+                      <span className="text-zinc-400">
+                        {" "}
+                        · released {releaseDate}
+                      </span>
+                    ) : null}
+                  </>
+                ) : (
+                  <a
+                    href={RELEASES_LATEST_URL}
+                    className="underline underline-offset-2 transition-colors hover:text-zinc-100"
+                  >
+                    See the latest release
+                  </a>
+                )}
+              </dd>
+            </div>
+
+            <div>
+              <dt className="text-xs font-medium uppercase tracking-wide text-zinc-500">
+                Download size
+              </dt>
+              <dd className="mt-1 text-sm text-zinc-200">
+                {fileSize ? (
+                  <>
+                    <span className="font-semibold text-zinc-100">
+                      {fileSize}
+                    </span>
+                    {fileName ? (
+                      <span className="break-all text-zinc-400"> · {fileName}</span>
+                    ) : null}
+                  </>
+                ) : (
+                  <a
+                    href={RELEASES_LATEST_URL}
+                    className="underline underline-offset-2 transition-colors hover:text-zinc-100"
+                  >
+                    See the release assets
+                  </a>
+                )}
+              </dd>
+            </div>
+
+            <div className="sm:col-span-2">
+              <dt className="text-xs font-medium uppercase tracking-wide text-zinc-500">
+                SHA-256 checksum
+              </dt>
+              <dd className="mt-1 text-sm text-zinc-200">
+                {sha256 ? (
+                  <code className="block break-all rounded-md bg-zinc-950/70 px-3 py-2 font-mono text-xs text-zinc-300">
+                    {sha256}
+                  </code>
+                ) : (
+                  <span className="text-zinc-400">
+                    Verify against the checksum listed on the{" "}
+                    <a
+                      href={releaseNotesUrl}
+                      className="underline underline-offset-2 transition-colors hover:text-zinc-100"
+                    >
+                      release page
+                    </a>
+                    .
+                  </span>
+                )}
+              </dd>
+            </div>
+
+            <div className="sm:col-span-2">
+              <dt className="text-xs font-medium uppercase tracking-wide text-zinc-500">
+                Signing
+              </dt>
+              <dd className="mt-1 text-sm text-zinc-300">{signingStatus}</dd>
+            </div>
+
+            <div className="sm:col-span-2">
+              <dt className="text-xs font-medium uppercase tracking-wide text-zinc-500">
+                Verify the source
+              </dt>
+              <dd className="mt-2 flex flex-wrap gap-x-5 gap-y-2 text-sm">
+                <a
+                  href={releaseNotesUrl}
+                  className="text-zinc-300 underline underline-offset-2 transition-colors hover:text-zinc-100"
+                >
+                  Release notes
+                </a>
+                <a
+                  href={SOURCE_URL}
+                  className="text-zinc-300 underline underline-offset-2 transition-colors hover:text-zinc-100"
+                >
+                  View source on GitHub
+                </a>
+              </dd>
+            </div>
+          </dl>
         </section>
 
         <section
