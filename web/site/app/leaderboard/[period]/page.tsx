@@ -26,9 +26,25 @@ export function generateMetadata({
   params: { period: string };
 }): Metadata {
   if (!isPeriod(params.period)) return { title: "Burnbar Leaderboard" };
+  const title = `${PERIOD_LABELS[params.period]} leaderboard — Burnbar`;
+  const description = `Top token usage for Claude Code and OpenAI Codex — ${PERIOD_LABELS[params.period].toLowerCase()}.`;
   return {
-    title: `${PERIOD_LABELS[params.period]} leaderboard — Burnbar`,
-    description: `Top token usage for Claude Code and OpenAI Codex — ${PERIOD_LABELS[params.period].toLowerCase()}.`,
+    title,
+    description,
+    // Period-specific canonical so each of daily/weekly/monthly is its own
+    // indexable URL (and the bare /leaderboard 308 has a canonical target).
+    alternates: {
+      canonical: `/leaderboard/${params.period}`,
+    },
+    openGraph: {
+      title,
+      description,
+      url: `/leaderboard/${params.period}`,
+    },
+    twitter: {
+      title,
+      description,
+    },
   };
 }
 
