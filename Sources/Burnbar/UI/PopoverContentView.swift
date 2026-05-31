@@ -149,15 +149,57 @@ struct PopoverContentView: View {
         .accessibilityHint(canExpand ? "Shows the per-machine breakdown" : "")
     }
 
+    /// Public landing page, used by the empty state's "Learn more" link. Opened in
+    /// the user's browser via `NSWorkspace.shared.open` — no embedded web view, in
+    /// keeping with the privacy thesis.
+    private static let learnMoreURL = URL(string: "https://burnbar.andybowu.xyz")!
+
+    /// Shown when there's no usage to display yet (1.5.x). Beyond the headline it
+    /// tells new users where Burnbar reads from — only the local `~/.claude` and
+    /// `~/.codex` CLI logs, never anything else — and hands them the next actions:
+    /// Refresh (re-reads via `store.refresh`, like the footer), Open Settings
+    /// (reuses `MenuActions.openSettings`), and a "Learn more" link. Copy stays
+    /// compact for the 300px-wide popover.
     private var emptyState: some View {
-        VStack(spacing: 4) {
+        VStack(spacing: 8) {
             Image(systemName: "flame").font(.title2).foregroundStyle(.tertiary)
             Text("No data yet")
                 .font(.subheadline.weight(.medium))
-            Text("Use Claude Code or Codex and your burn shows up here.")
+            Text("Run Claude Code or Codex and your burn shows up here.")
                 .font(.caption)
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)
+            Text(
+                "Burnbar reads only your local Claude Code (~/.claude) and Codex "
+                    + "(~/.codex) logs — no account or permissions needed."
+            )
+            .font(.caption2)
+            .foregroundStyle(.tertiary)
+            .multilineTextAlignment(.center)
+
+            HStack(spacing: 12) {
+                Button {
+                    store.refresh()
+                } label: {
+                    Label("Refresh", systemImage: "arrow.clockwise")
+                }
+                .disabled(store.isLoading)
+
+                Button {
+                    MenuActions.openSettings()
+                } label: {
+                    Label("Open Settings", systemImage: "gearshape")
+                }
+            }
+            .labelStyle(.titleOnly)
+            .controlSize(.small)
+            .padding(.top, 2)
+
+            Button("Learn more") {
+                NSWorkspace.shared.open(Self.learnMoreURL)
+            }
+            .buttonStyle(.link)
+            .font(.caption2)
         }
         .frame(maxWidth: .infinity)
         .padding(.vertical, 16)
