@@ -62,6 +62,12 @@ export interface LatestRelease {
   version: string;
   /** ISO-8601 published timestamp, or `null` if the API omitted it. */
   publishedAt: string | null;
+  /**
+   * GitHub web page for THIS specific release (its `html_url`), used as the
+   * "Release notes" link in the trust signals (issue #178). Falls back to the
+   * always-current `/releases/latest` page when the API omits it.
+   */
+  htmlUrl: string;
   /** Every asset attached to the release (may be empty). */
   assets: ReleaseAsset[];
   /**
@@ -92,6 +98,7 @@ const FALLBACK: LatestRelease = {
   tag: "",
   version: "",
   publishedAt: null,
+  htmlUrl: RELEASES_LATEST_URL,
   assets: [],
   recommendedAsset: null,
   downloadUrl: RELEASES_LATEST_URL,
@@ -154,6 +161,12 @@ function parseRelease(data: unknown): LatestRelease {
   const publishedAt =
     typeof record.published_at === "string" ? record.published_at : null;
 
+  // Specific release page; fall back to /releases/latest if the API omits it.
+  const htmlUrl =
+    typeof record.html_url === "string" && record.html_url !== ""
+      ? record.html_url
+      : RELEASES_LATEST_URL;
+
   const assets: ReleaseAsset[] = [];
   if (Array.isArray(record.assets)) {
     for (const item of record.assets) {
@@ -182,6 +195,7 @@ function parseRelease(data: unknown): LatestRelease {
     tag,
     version: tag.replace(/^v/, ""),
     publishedAt,
+    htmlUrl,
     assets,
     recommendedAsset,
     downloadUrl: recommendedAsset
