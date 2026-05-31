@@ -46,11 +46,27 @@ the Worker route `burnbar.andybowu.xyz/api/*` → the API Worker (in `wrangler.t
 
 ## 5. Homebrew tap + release (unblocks #28, #79)
 
+Cutting a release is automated by `.github/workflows/release.yml`: push a
+`v*.*.*` tag and CI (on `macos-14`) builds **both** artifacts and publishes a
+GitHub Release with the `.zip` and `.dmg` attached.
+
 ```bash
-./Scripts/package_app.sh                 # builds dist/Burnbar-vX.Y.Z.zip + prints sha256
-gh release create vX.Y.Z dist/Burnbar-vX.Y.Z.zip   # cut the GitHub Release
-# Create a PUBLIC repo: andybowu/homebrew-tap, add Casks/burnbar.rb pointing at the
-# release zip + sha256 (Scripts/update_cask.sh automates version+sha bumps once it lands).
+git tag v0.1.0 && git push origin v0.1.0   # triggers the Release workflow
+# CI runs package_app.sh (zip) + make_dmg.sh (DMG: Burnbar.app + /Applications
+# drag-link) and attaches both to a GitHub Release for tag v0.1.0.
 ```
-Then `brew install --cask andybowu/tap/burnbar` works (right-click → Open first
-launch, since v0 is ad-hoc signed — see ROADMAP.md).
+
+To build/publish manually instead (e.g. to inspect artifacts first):
+
+```bash
+./Scripts/package_app.sh    # dist/Burnbar-vX.Y.Z.zip + sha256
+./Scripts/make_dmg.sh       # dist/Burnbar-vX.Y.Z.dmg + sha256 (reuses the zip's build)
+gh release create vX.Y.Z dist/Burnbar-vX.Y.Z.zip dist/Burnbar-vX.Y.Z.dmg
+```
+
+Then create a PUBLIC `andybowu/homebrew-tap` repo and add `Casks/burnbar.rb`
+pointing at the release zip + sha256 (`Scripts/update_cask.sh` automates
+version+sha bumps once it lands). `brew install --cask andybowu/tap/burnbar`
+then works (right-click → Open first launch, since v0 is ad-hoc signed — see
+ROADMAP.md). Developer ID signing + notarization is tracked by #167, which slots
+into the release workflow at the marked insertion point.

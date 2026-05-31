@@ -56,6 +56,13 @@ else
     exit 1
   }
 
+  # Strip extended attributes / resource forks *before* signing so the seal is
+  # computed over the clean bundle — same as package_app.sh (#171). Matters when
+  # make_dmg.sh builds the app itself (e.g. it runs before package_app.sh in CI)
+  # so the DMG-shipped bundle gets the same clean seal as the zip-shipped one.
+  echo "==> Stripping extended attributes (clean seal)"
+  xattr -cr "$APP"
+
   echo "==> Ad-hoc signing (--deep covers the embedded BurnbarCore.framework)"
   codesign --force --deep --sign - "$APP"
   codesign --verify --verbose=2 "$APP"
