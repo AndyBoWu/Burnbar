@@ -37,11 +37,10 @@ Download `Burnbar-v0.1.0.zip` below, unzip, and move **Burnbar.app** to
 
 Burnbar runs as a menu-bar agent (no Dock icon) — look for the 🔥 flame icon.
 
-### Auto-start at login (optional)
+### Launch at login (optional)
 
-```bash
-./Scripts/install_launchagent.sh /Applications/Burnbar.app
-```
+To launch Burnbar automatically when you log in, open **Settings → General**
+and turn on **"Open at Login"**.
 
 ## Privacy
 
