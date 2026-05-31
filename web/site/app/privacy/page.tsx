@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 
+import { LEADERBOARD_ROLLING_OUT } from "@/app/lib/api";
+
 const PRIVACY_TITLE = "Privacy Policy — Burnbar";
 const PRIVACY_DESCRIPTION =
   "What Burnbar collects, what it never touches, how long data is kept, and how to opt out or delete everything.";
@@ -123,10 +125,11 @@ export default function PrivacyPage() {
             What we collect
           </h2>
           <p className="mb-6 leading-relaxed text-zinc-300">
-            Burnbar runs entirely on your Mac. The only data that leaves your
-            machine is a small daily usage rollup you upload to the leaderboard
-            after you opt in. That upload contains exactly these fields and
-            nothing else — the server rejects any extra key:
+            Burnbar runs entirely on your Mac. The only data that would ever leave
+            your machine is a small daily usage rollup you upload to the
+            leaderboard after you opt in. {LEADERBOARD_ROLLING_OUT} This is the
+            upload model it will use once live — that upload contains exactly
+            these fields and nothing else, and the server rejects any extra key:
           </p>
           <dl className="space-y-4">
             {COLLECTED.map(({ field, detail }) => (

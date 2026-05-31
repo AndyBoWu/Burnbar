@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import {
   fetchLeaderboard,
   isPeriod,
+  LEADERBOARD_ROLLING_OUT,
   NOT_CONFIGURED,
   type NotConfigured,
   PERIOD_LABELS,
@@ -108,8 +109,8 @@ function Rankings({
   if (entries === NOT_CONFIGURED) {
     return (
       <p className="rounded-lg border border-zinc-800 bg-zinc-900/40 px-4 py-6 text-center text-zinc-400">
-        The public leaderboard is rolling out soon. Opt in from the Burnbar menu
-        bar app and you&apos;ll show up here once it&apos;s live.
+        {LEADERBOARD_ROLLING_OUT} Opt in from the Burnbar menu bar app and
+        you&apos;ll show up here once it&apos;s live.
       </p>
     );
   }

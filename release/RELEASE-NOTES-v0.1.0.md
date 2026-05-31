@@ -17,9 +17,10 @@ across all your Macs.
 - **Cross-device aggregation** via iCloud Drive — see combined burn across every
   Mac, with a per-machine breakdown and a Devices tab.
 - **Global leaderboard (opt-in), built in:** GitHub device-flow sign-in and the
-  upload pipeline ship in this build. The public leaderboard service at
-  `burnbar.andybowu.xyz` is rolling out shortly — until it's live, sign-in is
-  inactive. Local tracking and iCloud sync work fully today, no account needed.
+  upload pipeline ship in this build. The public leaderboard is rolling out soon
+  at `burnbar.andybowu.xyz` — you can sign in and opt in now, and your opted-in
+  totals will appear publicly once it's live. Local tracking and iCloud sync work
+  fully today, no account needed.
 
 ## Requirements
 
@@ -52,8 +53,8 @@ never prompts, paths, project names, machine ids, or raw model names.
 ## Known limitations
 
 - Ad-hoc signed → first-open Gatekeeper step (above).
-- Leaderboard backend not yet live (sign-in inactive until `burnbar.andybowu.xyz`
-  is deployed).
+- The public leaderboard is rolling out soon — sign-in and opt-in work now, but
+  your totals won't appear publicly until `burnbar.andybowu.xyz` is deployed.
 - Codex reports a single token total per thread (a CLI limitation), so the Codex
   tile shows totals only; the Claude tile shows the full input/output/cache
   breakdown.

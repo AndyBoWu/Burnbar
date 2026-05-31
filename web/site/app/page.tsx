@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 
+import { LEADERBOARD_ROLLING_OUT_SHORT } from "@/app/lib/api";
 import {
   getLatestRelease,
   RELEASES_LATEST_URL,
@@ -145,7 +146,7 @@ const STEPS: Step[] = [
   },
   {
     title: "Opt-in leaderboard",
-    body: "Choose to share, and Burnbar uploads a tiny daily summary to climb the global leaderboard. Off by default, and you decide every time.",
+    body: "Choose to share, and Burnbar uploads a tiny daily summary to climb the global leaderboard. Off by default, and you decide every time. The public leaderboard is rolling out soon — opt in now and you'll appear once it's live.",
   },
 ];
 
@@ -249,9 +250,12 @@ export default async function HomePage() {
           <div className="flex items-center gap-6 text-sm">
             <Link
               href="/leaderboard"
-              className="text-zinc-400 transition-colors hover:text-zinc-100"
+              className="flex items-center gap-2 text-zinc-400 transition-colors hover:text-zinc-100"
             >
               Leaderboard
+              <span className="rounded-full border border-zinc-700 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-zinc-500">
+                {LEADERBOARD_ROLLING_OUT_SHORT}
+              </span>
             </Link>
             <a
               href={release.downloadUrl}
@@ -294,9 +298,12 @@ export default async function HomePage() {
             </a>
             <Link
               href="/leaderboard"
-              className="rounded-md border border-zinc-700 px-6 py-3 text-base font-semibold text-zinc-100 transition-colors hover:border-zinc-500"
+              className="flex items-center gap-2 rounded-md border border-zinc-700 px-6 py-3 text-base font-semibold text-zinc-100 transition-colors hover:border-zinc-500"
             >
               View the leaderboard
+              <span className="rounded-full border border-zinc-700 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-zinc-400">
+                {LEADERBOARD_ROLLING_OUT_SHORT}
+              </span>
             </Link>
           </div>
           <p className="text-sm text-zinc-500">

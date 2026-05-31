@@ -46,8 +46,27 @@ struct LeaderboardSettingsView: View {
     /// model reads it (and the Keychain sign-in state) through its injected gates.
     @State private var model = LeaderboardUploadModel()
 
+    /// The canonical "not live yet" readiness line, matching the website's
+    /// wording (issue #174) so the app, site, and release notes all read the same.
+    /// Accurate to the code: opting in only *saves your preference* and "Upload
+    /// now" attempts a live POST — there is no public ranking to land on until the
+    /// backend ships (issue #173, operator-gated), and no background auto-upload
+    /// runs in this build. When the backend goes live, flip this one string.
+    private static let rollingOutStatus =
+        "The public leaderboard is rolling out soon. Your opt-in choice is saved now — " +
+        "once it's live, your opted-in totals will appear publicly."
+
     var body: some View {
         Form {
+            // Readiness status first: set the expectation that nothing appears
+            // publicly yet, while keeping sign-in and opt-in fully usable below.
+            Section {
+                Label(Self.rollingOutStatus, systemImage: "clock.badge")
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
+                    .labelStyle(.titleAndIcon)
+            }
+
             LeaderboardAccountSection(auth: auth)
 
             Section {
