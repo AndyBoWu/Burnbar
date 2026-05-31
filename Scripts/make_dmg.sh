@@ -17,9 +17,14 @@
 #      that still ships Burnbar.app + an /Applications symlink — drag-install
 #      works, just without the fancy background.
 #
-# Like package_app.sh this uses **ad-hoc signing only** (no hardened runtime,
-# no notarization). Gatekeeper quarantines downloads — users right-click ->
-# Open the first time. See README.
+# Signing matches package_app.sh and is automatic by environment (#167): with
+# DEVELOPER_ID_APPLICATION set, a freshly built app is Developer-ID-signed with
+# hardened runtime; if notary credentials are also present the finished DMG is
+# notarized + stapled so it opens through the normal Gatekeeper flow. Without
+# those env vars it falls back to ad-hoc signing (no hardened runtime, no
+# notarization) — Gatekeeper quarantines downloads, users right-click -> Open
+# the first time. See README. When the app is REUSED from a prior Release build
+# (e.g. package_app.sh already ran), its existing signature is preserved.
 #
 set -euo pipefail
 cd "$(dirname "$0")/.."
@@ -63,9 +68,15 @@ else
   echo "==> Stripping extended attributes (clean seal)"
   xattr -cr "$APP"
 
-  echo "==> Ad-hoc signing (--deep covers the embedded BurnbarCore.framework)"
-  codesign --force --deep --sign - "$APP"
-  codesign --verify --verbose=2 "$APP"
+  if "$(pwd)/Scripts/sign_and_notarize.sh" can-sign; then
+    # Developer ID path (#167): hardened-runtime signing of the framework + app.
+    "$(pwd)/Scripts/sign_and_notarize.sh" sign-app "$APP"
+  else
+    echo "==> Ad-hoc signing (--deep covers the embedded BurnbarCore.framework)"
+    echo "    (set DEVELOPER_ID_APPLICATION for hardened-runtime Developer ID signing)"
+    codesign --force --deep --sign - "$APP"
+    codesign --verify --verbose=2 "$APP"
+  fi
 fi
 
 VERSION="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$APP/Contents/Info.plist")"
@@ -126,8 +137,29 @@ fi
   exit 1
 }
 
+# Developer ID path (#167): sign the DMG container with the same identity, then
+# notarize + staple it so the mounted volume opens through the normal Gatekeeper
+# flow. The enclosed .app must already be Developer-ID + hardened-runtime signed
+# (done above when this script builds it, or by package_app.sh when reused).
+SIGN="$(pwd)/Scripts/sign_and_notarize.sh"
+NOTARIZED=0
+if "$SIGN" can-sign; then
+  echo "==> Developer ID signing the DMG container"
+  codesign --force --timestamp --sign "$DEVELOPER_ID_APPLICATION" "$DMG"
+  codesign --verify --verbose=2 "$DMG"
+  if "$SIGN" can-notarize; then
+    "$SIGN" notarize "$DMG"   # submits, staples, and validates the .dmg
+    NOTARIZED=1
+  fi
+fi
+
 echo ""
 echo "Artifact: $DMG"
 echo "SHA-256:  $(shasum -a 256 "$DMG" | awk '{print $1}')"
-echo "Install:  open the DMG, drag Burnbar.app onto Applications, then"
-echo "          right-click Burnbar.app -> Open (first launch only; ad-hoc/Gatekeeper)."
+if [ "$NOTARIZED" -eq 1 ]; then
+  echo "Install:  open the DMG, drag Burnbar.app onto Applications, then open it —"
+  echo "          Developer ID signed + notarized + stapled (normal Gatekeeper flow)."
+else
+  echo "Install:  open the DMG, drag Burnbar.app onto Applications, then"
+  echo "          right-click Burnbar.app -> Open (first launch only; ad-hoc/Gatekeeper)."
+fi

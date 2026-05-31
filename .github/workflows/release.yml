@@ -3,10 +3,23 @@ name: Release
 # Cut a GitHub Release with the macOS artifacts (.zip + .dmg) when a version tag
 # is pushed, e.g. `git tag v0.1.0 && git push origin v0.1.0`.
 #
-# Signing model: ad-hoc only (same as Scripts/package_app.sh + Scripts/make_dmg.sh).
-# There is no Developer ID / notarization yet — issue #167 adds those secrets and
-# slots a notarization step into THIS file between "Build artifacts" and "Create
-# GitHub Release" without restructuring the rest.
+# Signing model (#167): Developer ID + notarization WHEN the signing secrets are
+# configured, otherwise ad-hoc fallback (same as Scripts/package_app.sh +
+# Scripts/make_dmg.sh). The "Import Developer ID certificate" step is gated on the
+# MACOS_CERTIFICATE secret; when it is absent every step runs ad-hoc and the
+# release still publishes. When it is present, the cert is imported into a
+# throwaway keychain and the packaging scripts pick up DEVELOPER_ID_APPLICATION +
+# the notary credentials from the job env and produce signed+notarized+stapled
+# artifacts.
+#
+# Required repo secrets for the Developer ID path (see docs/M3-OPERATOR-SETUP.md):
+#   MACOS_CERTIFICATE             base64 of the Developer ID Application .p12
+#   MACOS_CERTIFICATE_PWD         password for that .p12
+#   MACOS_SIGNING_IDENTITY        e.g. "Developer ID Application: Andy Wu (TEAMID)"
+#   KEYCHAIN_PASSWORD             ephemeral password for the temp keychain
+#   APPLE_ID                      Apple ID email of the Developer account
+#   APPLE_TEAM_ID                 10-char Team ID
+#   APPLE_APP_SPECIFIC_PASSWORD   app-specific password for notarytool
 
 on:
   push:
@@ -25,6 +38,11 @@ jobs:
     name: Build & publish macOS artifacts
     runs-on: macos-14
     timeout-minutes: 40
+    # `secrets` cannot be referenced from a step `if:`, so surface the gating
+    # secret as a job-level env var and branch on `env.HAS_SIGNING_CERT` instead.
+    # Empty when the secret is unset -> every signing step is skipped (ad-hoc).
+    env:
+      HAS_SIGNING_CERT: ${{ secrets.MACOS_CERTIFICATE != '' }}
     steps:
       - uses: actions/checkout@v4
 
@@ -40,21 +58,76 @@ jobs:
       - name: Install tooling
         run: brew install xcodegen create-dmg
 
-      # Build the zip first; it strips xattrs, ad-hoc signs, and leaves the
-      # Release build under build/ for make_dmg.sh to reuse (so the DMG ships the
-      # exact same signed bundle, and we don't pay for two Release builds).
+      # Developer ID signing (#167). Gated on the MACOS_CERTIFICATE secret: when
+      # it is absent this step is skipped and the build runs ad-hoc. When present
+      # it imports the .p12 into a throwaway keychain and exports the signing
+      # identity to the job env (DEVELOPER_ID_APPLICATION) so the packaging
+      # scripts switch to the hardened-runtime Developer ID path automatically.
+      # The keychain is deleted in the always() cleanup step below.
+      - name: Import Developer ID certificate
+        if: ${{ env.HAS_SIGNING_CERT == 'true' }}
+        env:
+          MACOS_CERTIFICATE: ${{ secrets.MACOS_CERTIFICATE }}
+          MACOS_CERTIFICATE_PWD: ${{ secrets.MACOS_CERTIFICATE_PWD }}
+          KEYCHAIN_PASSWORD: ${{ secrets.KEYCHAIN_PASSWORD }}
+        run: |
+          set -euo pipefail
+          CERT_PATH="$RUNNER_TEMP/developer_id.p12"
+          KEYCHAIN_PATH="$RUNNER_TEMP/burnbar-signing.keychain-db"
+
+          # Decode the base64 .p12 from the secret to a temp file.
+          echo -n "$MACOS_CERTIFICATE" | base64 --decode -o "$CERT_PATH"
+
+          # Create + unlock a dedicated keychain, then make it searchable.
+          security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+          security set-keychain-settings -lut 21600 "$KEYCHAIN_PATH"
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+
+          # Import the cert; allow codesign/security tools to use it non-interactively.
+          security import "$CERT_PATH" -P "$MACOS_CERTIFICATE_PWD" \
+            -A -t cert -f pkcs12 -k "$KEYCHAIN_PATH"
+          security set-key-partition-list -S apple-tool:,apple: \
+            -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH" >/dev/null
+
+          # Put our keychain first in the search list so codesign finds the identity.
+          security list-keychains -d user -s "$KEYCHAIN_PATH" login.keychain-db
+          rm -f "$CERT_PATH"
+
+          echo "Imported signing identities:"
+          security find-identity -v -p codesigning "$KEYCHAIN_PATH"
+
+      # Build the zip first; it strips xattrs, signs (Developer ID when the env is
+      # set, else ad-hoc), notarizes+staples when notary creds are present, and
+      # leaves the Release build under build/ for make_dmg.sh to reuse (so the DMG
+      # ships the exact same signed bundle, and we don't pay for two Release builds).
       - name: Build zip artifact
+        env:
+          DEVELOPER_ID_APPLICATION: ${{ secrets.MACOS_SIGNING_IDENTITY }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
         run: ./Scripts/package_app.sh
 
       - name: Build DMG artifact
+        env:
+          DEVELOPER_ID_APPLICATION: ${{ secrets.MACOS_SIGNING_IDENTITY }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
         run: ./Scripts/make_dmg.sh
 
-      # NOTE (#167): Developer ID signing + notarization + stapling go HERE,
-      # operating on dist/Burnbar-v*.zip and dist/Burnbar-v*.dmg, before the
-      # release is created. Keep this comment as the insertion point.
+      # Signing + notarization + stapling already happened inside the packaging
+      # scripts above (they branch on DEVELOPER_ID_APPLICATION / notary creds),
+      # so dist/Burnbar-v*.zip and dist/Burnbar-v*.dmg are release-ready here.
 
       - name: List artifacts
         run: ls -lh dist/
+
+      # Always remove the throwaway signing keychain, even if a build step failed.
+      - name: Clean up signing keychain
+        if: ${{ always() && env.HAS_SIGNING_CERT == 'true' }}
+        run: |
+          security delete-keychain "$RUNNER_TEMP/burnbar-signing.keychain-db" || true
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
