@@ -221,10 +221,6 @@ private struct DevicesSettingsView: View {
     /// burn off the main actor, owns rename/hide/forget (2.4.4).
     @State private var fleet = DevicesViewModel()
 
-    /// Drives the leaderboard "Sign in with GitHub" device flow (3.2.2). Owns the
-    /// published sign-in state the account section below binds to.
-    @State private var auth = AuthController()
-
     var body: some View {
         Form {
             Section {
@@ -266,8 +262,6 @@ private struct DevicesSettingsView: View {
             }
 
             DevicesTableSection(fleet: fleet)
-
-            LeaderboardAccountSection(auth: auth)
         }
         .formStyle(.grouped)
         // Persist every keystroke through the store so the override survives
@@ -583,162 +577,6 @@ private final class SyncHealthMonitor: ObservableObject {
                     iCloudAvailable: available
                 )
             }
-        }
-    }
-}
-
-// MARK: - Leaderboard account (3.2.2)
-
-/// The leaderboard "Sign in with GitHub" section of the Devices tab.
-///
-/// Tapping "Sign in with GitHub" kicks off GitHub's device flow via
-/// `AuthController`: it requests a device code, surfaces the short user code in a
-/// large, monospaced, **copyable** label, auto-opens the verification page in the
-/// user's default browser, and shows the verification URL as fallback text. While
-/// awaiting authorization it polls; on success it stores the token in the Keychain
-/// and flips to a signed-in row with a "Sign out" action. Errors surface as a
-/// plain-English message with a "Try again" affordance.
-///
-/// No embedded web view — authorization happens in the system browser, so no
-/// cookies or third-party Keychain items are read (privacy thesis, CLAUDE.md M3).
-/// English-only literals throughout.
-private struct LeaderboardAccountSection: View {
-    @Bindable var auth: AuthController
-
-    /// Drives the "Revoke access" confirmation dialog. Revocation is irreversible
-    /// (it invalidates the token at GitHub), so it is gated behind an explicit
-    /// confirm per the 3.2.5 Definition of Done.
-    @State private var confirmingRevoke = false
-
-    /// Drives the "Delete all my data" confirmation dialog. Deletion is destructive
-    /// and irreversible (it erases the user's server-side leaderboard rows), so it
-    /// is gated behind an explicit confirm per the 3.5.2 Definition of Done.
-    @State private var confirmingDelete = false
-
-    var body: some View {
-        Section {
-            switch auth.state {
-            case .signedOut:
-                signedOutRow
-
-            case .requestingCode:
-                HStack(spacing: 8) {
-                    ProgressView().controlSize(.small)
-                    Text("Contacting GitHub…")
-                        .foregroundStyle(.secondary)
-                }
-
-            case let .awaitingAuthorization(userCode, verificationURI):
-                awaitingRow(userCode: userCode, verificationURI: verificationURI)
-
-            case .signedIn:
-                signedInRow
-
-            case let .failed(message):
-                failedRow(message: message)
-            }
-        } header: {
-            Text("Leaderboard")
-        } footer: {
-            Text(
-                "Sign in to publish your daily totals to the public leaderboard. Only the date, provider, "
-                    + "and aggregate token + cost totals are uploaded — never your prompts, projects, or paths."
-            )
-            .font(.caption)
-            .foregroundStyle(.secondary)
-        }
-        // Revoke is irreversible (invalidates the token at GitHub), so it is gated
-        // behind an explicit confirmation per the 3.2.5 Definition of Done.
-        .confirmationDialog(
-            "Revoke access to GitHub?",
-            isPresented: $confirmingRevoke,
-            titleVisibility: .visible
-        ) {
-            Button("Revoke access", role: .destructive) {
-                Task { await auth.revoke() }
-            }
-            Button("Cancel", role: .cancel) {}
-        } message: {
-            Text(
-                "This invalidates Burnbar's token at GitHub and signs you out. "
-                    + "You'll need to sign in again to publish to the leaderboard."
-            )
-        }
-        // Deleting all data is destructive and irreversible (it erases the user's
-        // server-side leaderboard rows), so it is gated behind an explicit
-        // confirmation per the 3.5.2 Definition of Done.
-        .confirmationDialog(
-            "Delete all your leaderboard data?",
-            isPresented: $confirmingDelete,
-            titleVisibility: .visible
-        ) {
-            Button("Delete all my data", role: .destructive) {
-                Task { await auth.deleteAllData() }
-            }
-            Button("Cancel", role: .cancel) {}
-        } message: {
-            Text(
-                "This permanently erases all of your data from the leaderboard and signs you out. "
-                    + "This can't be undone. You can sign in again afterwards to start fresh."
-            )
-        }
-    }
-
-    private var signedOutRow: some View {
-        Button("Sign in with GitHub") { auth.signIn() }
-    }
-
-    private func awaitingRow(userCode: String, verificationURI: String) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text("Enter this code at GitHub to finish signing in:")
-                .font(.callout)
-                .foregroundStyle(.secondary)
-
-            HStack(spacing: 12) {
-                Text(userCode)
-                    .font(.system(.title, design: .monospaced).weight(.semibold))
-                    .textSelection(.enabled)
-                Button("Copy code") { auth.copyUserCode() }
-            }
-
-            // Fallback in case the browser didn't open automatically.
-            HStack(spacing: 4) {
-                Text("If your browser didn't open,")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                Button("open \(verificationURI)") { auth.openVerificationURL() }
-                    .buttonStyle(.link)
-                    .font(.caption)
-            }
-        }
-    }
-
-    private var signedInRow: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            HStack {
-                Label("Signed in to GitHub", systemImage: "checkmark.circle.fill")
-                    .foregroundStyle(.green)
-                Spacer()
-                // "Sign out" clears only the local Keychain token; "Revoke access"
-                // additionally invalidates it at GitHub (behind a confirm).
-                Button("Sign out") { auth.signOut() }
-                Button("Revoke access", role: .destructive) { confirmingRevoke = true }
-            }
-            // "Delete all my data" goes further than revoke: it erases the user's
-            // server-side leaderboard rows *and* clears local credentials + opt-in
-            // (behind a confirm), per the 3.5.2 Definition of Done.
-            Button("Delete all my data", role: .destructive) { confirmingDelete = true }
-                .help("Permanently erase all your leaderboard data and sign out.")
-        }
-    }
-
-    private func failedRow(message: String) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Label(message, systemImage: "exclamationmark.triangle.fill")
-                .font(.callout)
-                .foregroundStyle(.orange)
-                .labelStyle(.titleAndIcon)
-            Button("Try again") { auth.signIn() }
         }
     }
 }
