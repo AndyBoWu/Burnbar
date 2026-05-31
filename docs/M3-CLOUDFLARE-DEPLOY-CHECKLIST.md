@@ -66,6 +66,22 @@ npm run migrate:prod    && npm run deploy:prod
 
 ## 5. Deploy the web frontend (Cloudflare Pages)
 
+Preferred path: GitHub Actions deploys `web/site` via
+`.github/workflows/deploy-site.yml`.
+
+Configure the repository first:
+
+- Secret `CLOUDFLARE_API_TOKEN`
+- Secret `CLOUDFLARE_ACCOUNT_ID`
+- Variable `NEXT_PUBLIC_API_URL=https://burnbar.andybowu.xyz`
+
+Then push a `web/site/**` change to `main`; the workflow runs
+`pnpm typecheck`, `pnpm pages:build`, and `wrangler pages deploy --branch main`.
+PRs from trusted same-repo branches create Pages previews; forked PRs build and
+skip deploy.
+
+Manual fallback:
+
 ```bash
 cd web/site
 pnpm install && pnpm build
