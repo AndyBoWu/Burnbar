@@ -57,14 +57,41 @@ npx wrangler secret put GITHUB_CLIENT_SECRET --env prod
 
 ## 4. Migrate + deploy the API Worker
 
+The `npm run` scripts wrap `wrangler d1 migrations apply` + `wrangler deploy`
+per env (see `web/package.json`); run them from `web/`:
+
 ```bash
+cd web
 npm run migrate:staging && npm run deploy:staging   # → *.workers.dev URL; GET / returns {"ok":true}
 npm run migrate:prod    && npm run deploy:prod
 ```
-`deploy:prod` also attaches the route `burnbar.andybowu.xyz/api/*` (already in
-`wrangler.toml`). The route needs the DNS record in step 6 to resolve.
 
-## 5. Deploy the web frontend (Cloudflare Pages)
+Equivalent explicit commands (if you'd rather not use the npm aliases):
+
+```bash
+cd web
+npx wrangler d1 migrations apply burnbar-prod --env prod --remote   # applies migrations/0001..0002 to the prod D1
+npx wrangler deploy --env prod                                      # deploys src/index.ts with the [env.prod] D1 binding
+```
+
+`deploy:prod` also attaches the route `burnbar.andybowu.xyz/api/*` (already in
+`wrangler.toml`). The route needs the DNS record in step 6 to resolve; until
+then, exercise the API at its `*.workers.dev` URL.
+
+**Note the prod API origin** — it's either the `*.workers.dev` URL printed by
+`deploy:prod`, or (once DNS lands) `https://burnbar.andybowu.xyz`. You'll point
+the site at it in step 5.
+
+## 5. Point the site at the API (the one-step wiring) + deploy Pages
+
+The site reads its API origin from **`NEXT_PUBLIC_API_URL`** (baked in at build
+time — it's a `NEXT_PUBLIC_*` var, so it must be present when `pnpm pages:build`
+runs, not just at runtime). Until it's set to a real origin, the site falls back
+to the placeholder `api.burnbar.example` and **the leaderboard renders the
+intentional "rolling out soon" state instead of a generic error** (see
+`web/site/app/lib/api.ts` → `isApiConfigured()`). So the *only* thing needed to
+go from "coming soon" to live rows is setting this one variable to the step-4
+origin and rebuilding.
 
 Preferred path: GitHub Actions deploys `web/site` via
 `.github/workflows/deploy-site.yml`.
@@ -73,7 +100,10 @@ Configure the repository first:
 
 - Secret `CLOUDFLARE_API_TOKEN`
 - Secret `CLOUDFLARE_ACCOUNT_ID`
-- Variable `NEXT_PUBLIC_API_URL=https://burnbar.andybowu.xyz`
+- Variable `NEXT_PUBLIC_API_URL` = the prod API origin from step 4
+  (`https://burnbar.andybowu.xyz` once DNS lands, or the `*.workers.dev` URL
+  before that). The workflow already reads this var (defaulting to
+  `https://burnbar.andybowu.xyz`) and exports it into the build env.
 
 Then push a `web/site/**` change to `main`; the workflow runs
 `pnpm typecheck`, `pnpm pages:build`, and `wrangler pages deploy --branch main`.
@@ -84,11 +114,18 @@ Manual fallback:
 
 ```bash
 cd web/site
-pnpm install && pnpm build
+pnpm install
+NEXT_PUBLIC_API_URL=https://burnbar.andybowu.xyz pnpm pages:build   # bake the API origin into the bundle
 npx wrangler pages deploy          # or connect the repo in the Pages dashboard
 ```
-Set `NEXT_PUBLIC_API_URL` to `https://burnbar.andybowu.xyz` (or the prod API
-origin). Add **`burnbar.andybowu.xyz`** as a Custom Domain on the Pages project.
+Add **`burnbar.andybowu.xyz`** as a Custom Domain on the Pages project.
+
+> Same-origin alternative: instead of a cross-origin `NEXT_PUBLIC_API_URL`, the
+> prod Worker route `burnbar.andybowu.xyz/api/*` (step 4) already makes
+> `/api/v1/leaderboard/...` resolve same-origin once DNS lands. Setting
+> `NEXT_PUBLIC_API_URL=https://burnbar.andybowu.xyz` uses exactly that route, so
+> no extra rewrite/proxy is needed — the Worker route + the Pages catch-all live
+> on one hostname.
 
 ## 6. DNS — the actual #71 deliverable
 
@@ -117,9 +154,15 @@ already done in #156.)
 curl -i https://burnbar.andybowu.xyz/api/v1/leaderboard/daily   # JSON from the API Worker
 curl -i https://burnbar.andybowu.xyz/                            # web landing page (Pages)
 curl -i http://burnbar.andybowu.xyz                             # 301 → https
+curl -s https://burnbar.andybowu.xyz/leaderboard/daily | grep -o "rolling out soon" || echo "no coming-soon copy (API is wired)"
 ```
-- All three pass → **close #71** (DNS CNAME). With #72/#73 already closed,
-  **#90** (Domain epic) can close too.
+- All three `curl -i` pass → **close #71** (DNS CNAME). With #72/#73 already
+  closed, **#90** (Domain epic) can close too.
+- The `/leaderboard/daily` page should now render **real rows or the empty
+  "No entries yet" state — NOT "rolling out soon"** (that string appearing means
+  `NEXT_PUBLIC_API_URL` was unset at `pnpm pages:build` time → redo step 5) and
+  NOT the red "Couldn't load…" error (that means the API origin is set but the
+  Worker is unreachable/500 → check step 4). **This closes #173.**
 - Then test the app: sign in with GitHub from Settings → it should reach
   `/api/v1/me` and authenticate. (This also retroactively validates the #86
   revoke path against a live token — see the note on the closed #86.)

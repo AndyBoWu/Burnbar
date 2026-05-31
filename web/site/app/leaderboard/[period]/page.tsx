@@ -4,6 +4,8 @@ import { notFound } from "next/navigation";
 import {
   fetchLeaderboard,
   isPeriod,
+  NOT_CONFIGURED,
+  type NotConfigured,
   PERIOD_LABELS,
   PERIODS,
   type LeaderboardEntry,
@@ -96,7 +98,23 @@ export default async function LeaderboardPage({
   );
 }
 
-function Rankings({ entries }: { entries: LeaderboardEntry[] | null }) {
+function Rankings({
+  entries,
+}: {
+  entries: LeaderboardEntry[] | NotConfigured | null;
+}) {
+  // Pre-deploy: no real API origin configured yet. Show the intentional
+  // "coming soon" state — never the scary generic error.
+  if (entries === NOT_CONFIGURED) {
+    return (
+      <p className="rounded-lg border border-zinc-800 bg-zinc-900/40 px-4 py-6 text-center text-zinc-400">
+        The public leaderboard is rolling out soon. Opt in from the Burnbar menu
+        bar app and you&apos;ll show up here once it&apos;s live.
+      </p>
+    );
+  }
+
+  // Configured API but it failed (network/HTTP/shape) → genuine transient error.
   if (entries === null) {
     return (
       <p className="rounded-lg border border-red-900/60 bg-red-950/40 px-4 py-6 text-center text-red-300">

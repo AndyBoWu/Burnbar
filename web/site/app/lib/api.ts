@@ -33,25 +33,58 @@ export interface LeaderboardResponse {
 }
 
 /**
+ * Placeholder origin used when no API is configured. Kept ONLY as the sentinel
+ * the build falls back to so pages can detect the "not deployed yet" state and
+ * render the intentional "coming soon" message instead of trying (and failing)
+ * to reach a non-existent host. The operator replaces it by setting
+ * `NEXT_PUBLIC_API_URL` to the deployed Worker origin (see
+ * docs/M3-CLOUDFLARE-DEPLOY-CHECKLIST.md).
+ */
+export const PLACEHOLDER_API_BASE = "https://api.burnbar.example";
+
+/**
  * Base URL of the public API. Configured via `NEXT_PUBLIC_API_URL`; falls back
  * to a documented placeholder so builds succeed without the deployed Worker.
+ * When it equals the placeholder (or is empty), the API is treated as
+ * unconfigured and the leaderboard renders the "coming soon" state.
  */
 export const API_BASE: string =
-  process.env.NEXT_PUBLIC_API_URL ?? "https://api.burnbar.example";
+  process.env.NEXT_PUBLIC_API_URL?.trim() || PLACEHOLDER_API_BASE;
+
+/**
+ * Sentinel returned by the fetchers when no real API origin is configured yet
+ * (i.e. `API_BASE` is still the placeholder). Callers render the intentional
+ * "leaderboard coming soon" state — NOT the generic transient-error state.
+ */
+export const NOT_CONFIGURED = "not-configured" as const;
+export type NotConfigured = typeof NOT_CONFIGURED;
+
+/**
+ * Whether a real API origin has been configured. `false` while `API_BASE` is
+ * still the documented placeholder (the pre-deploy default). Used to decide
+ * between the "coming soon" state and a real error state.
+ */
+export function isApiConfigured(): boolean {
+  return API_BASE !== PLACEHOLDER_API_BASE;
+}
 
 /** The API caps results at 100; we never render more than this. */
 export const MAX_ROWS = 100;
 
 /**
- * Fetch the top-100 leaderboard for a period. Returns the parsed entries on
- * success, or `null` on any network/HTTP/shape error so callers can render an
- * error state instead of throwing during render.
+ * Fetch the top-100 leaderboard for a period. Returns:
+ *   - the parsed entries on success (possibly empty → "no entries yet"),
+ *   - `"not-configured"` when no real API origin is set yet (pre-deploy →
+ *     "coming soon"), so callers never hit the doomed placeholder host,
+ *   - `null` on any network/HTTP/shape error from a CONFIGURED API (→ the
+ *     transient "try again later" error state).
  *
  * Revalidates every 5 minutes (ISR) per the ticket's refresh requirement.
  */
 export async function fetchLeaderboard(
   period: Period,
-): Promise<LeaderboardEntry[] | null> {
+): Promise<LeaderboardEntry[] | NotConfigured | null> {
+  if (!isApiConfigured()) return NOT_CONFIGURED;
   const url = `${API_BASE}/api/v1/leaderboard/${period}`;
   try {
     const res = await fetch(url, {
@@ -90,6 +123,8 @@ export const PROFILE_HISTORY_DAYS = 90;
  * unknown logins all 404. Returns:
  *   - the parsed profile on 200,
  *   - `"not-found"` on 404 (hidden / opted-out / unknown → caller renders 404),
+ *   - `"not-configured"` when no real API origin is set yet (pre-deploy →
+ *     "coming soon"), so we never hit the doomed placeholder host,
  *   - `null` on any network/other-HTTP/shape error (caller renders an error).
  *
  * No history is fetched or embedded when the user is excluded — the 404 is
@@ -97,7 +132,8 @@ export const PROFILE_HISTORY_DAYS = 90;
  */
 export async function getProfile(
   login: string,
-): Promise<PublicProfile | "not-found" | null> {
+): Promise<PublicProfile | "not-found" | NotConfigured | null> {
+  if (!isApiConfigured()) return NOT_CONFIGURED;
   const url = `${API_BASE}/api/v1/u/${encodeURIComponent(login)}`;
   try {
     const res = await fetch(url, {
