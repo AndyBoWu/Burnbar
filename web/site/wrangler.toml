@@ -1,0 +1,19 @@
+# Cloudflare Pages config for the Burnbar leaderboard site (burnbar-site).
+#
+# This is the PAGES project config — distinct from web/wrangler.toml, which is
+# the API Worker. Having this file here also stops wrangler from picking up the
+# Worker's config by mistake when deploying from web/site.
+#
+# next-on-pages emits a Worker bundle (_worker.js) that imports Node built-ins
+# (node:buffer, node:async_hooks), so the project REQUIRES the nodejs_compat
+# flag with a compatibility_date >= 2024-09-23. Without it, every route 503s
+# with "no nodejs_compat compatibility flag".
+
+name = "burnbar-site"
+pages_build_output_dir = ".vercel/output/static"
+compatibility_date = "2026-01-01"
+compatibility_flags = ["nodejs_compat"]
+
+# Apply the flag to preview deploys too (branches other than production).
+[env.preview]
+compatibility_flags = ["nodejs_compat"]

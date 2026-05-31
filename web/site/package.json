@@ -10,8 +10,8 @@
     "lint": "next lint",
     "typecheck": "tsc --noEmit",
     "pages:build": "next-on-pages",
-    "deploy:staging": "wrangler pages deploy .vercel/output/static --project-name burnbar-site --branch staging",
-    "deploy:prod": "wrangler pages deploy .vercel/output/static --project-name burnbar-site --branch main"
+    "deploy:staging": "wrangler pages deploy --branch staging",
+    "deploy:prod": "wrangler pages deploy --branch main"
   },
   "dependencies": {
     "next": "^14.2.15",
