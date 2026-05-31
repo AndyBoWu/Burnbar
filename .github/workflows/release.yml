@@ -1,0 +1,68 @@
+name: Release
+
+# Cut a GitHub Release with the macOS artifacts (.zip + .dmg) when a version tag
+# is pushed, e.g. `git tag v0.1.0 && git push origin v0.1.0`.
+#
+# Signing model: ad-hoc only (same as Scripts/package_app.sh + Scripts/make_dmg.sh).
+# There is no Developer ID / notarization yet — issue #167 adds those secrets and
+# slots a notarization step into THIS file between "Build artifacts" and "Create
+# GitHub Release" without restructuring the rest.
+
+on:
+  push:
+    tags:
+      - "v*.*.*"
+
+permissions:
+  contents: write # required to create the Release and upload assets
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  release:
+    name: Build & publish macOS artifacts
+    runs-on: macos-14
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+
+      # Burnbar uses Swift 6 language mode — needs Xcode 16+ (mirrors build-and-test.yml).
+      - name: Select Xcode 16
+        uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: "16"
+
+      # xcodegen generates the git-ignored .xcodeproj; create-dmg styles the DMG
+      # window (best-effort — make_dmg.sh falls back to plain hdiutil if it is
+      # absent or its Finder styling step fails on the headless runner).
+      - name: Install tooling
+        run: brew install xcodegen create-dmg
+
+      # Build the zip first; it strips xattrs, ad-hoc signs, and leaves the
+      # Release build under build/ for make_dmg.sh to reuse (so the DMG ships the
+      # exact same signed bundle, and we don't pay for two Release builds).
+      - name: Build zip artifact
+        run: ./Scripts/package_app.sh
+
+      - name: Build DMG artifact
+        run: ./Scripts/make_dmg.sh
+
+      # NOTE (#167): Developer ID signing + notarization + stapling go HERE,
+      # operating on dist/Burnbar-v*.zip and dist/Burnbar-v*.dmg, before the
+      # release is created. Keep this comment as the insertion point.
+
+      - name: List artifacts
+        run: ls -lh dist/
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          # Tag name (e.g. v0.1.0) drives the release name; the tag must already
+          # exist since this runs on tag push.
+          generate_release_notes: true
+          fail_on_unmatched_files: true
+          files: |
+            dist/Burnbar-v*.zip
+            dist/Burnbar-v*.dmg
