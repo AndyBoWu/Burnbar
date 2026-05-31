@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import {
   getProfile,
+  NOT_CONFIGURED,
   PROFILE_HISTORY_DAYS,
   type ProfilePoint,
   type PublicProfile,
@@ -44,6 +45,19 @@ export default async function ProfilePage({
   params: { login: string };
 }) {
   const profile = await getProfile(params.login);
+
+  // Pre-deploy: no real API origin configured yet. Show the intentional
+  // "coming soon" state rather than the generic error or a misleading 404.
+  if (profile === NOT_CONFIGURED) {
+    return (
+      <main className="mx-auto flex min-h-screen max-w-3xl flex-col gap-8 px-6 py-12">
+        <p className="rounded-lg border border-zinc-800 bg-zinc-900/40 px-4 py-6 text-center text-zinc-400">
+          Public profiles are rolling out soon. Check back once the leaderboard
+          is live.
+        </p>
+      </main>
+    );
+  }
 
   // Hidden / opted-out / unknown users → a real 404 with no history rendered.
   if (profile === "not-found") notFound();
