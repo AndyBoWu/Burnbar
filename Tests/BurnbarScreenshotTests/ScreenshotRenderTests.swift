@@ -1,8 +1,8 @@
 import AppKit
-@testable import Burnbar
-@testable import BurnbarCore
 import SwiftUI
 import XCTest
+@testable import Burnbar
+@testable import BurnbarCore
 
 /// Renders the Burnbar UI to PNGs for the landing page (issue #177) using SwiftUI's
 /// `ImageRenderer` — entirely in-process, with **no Screen Recording permission and
@@ -168,7 +168,7 @@ private struct BrandBackground: View {
         LinearGradient(
             colors: [
                 Color(red: 0.06, green: 0.06, blue: 0.07),
-                Color(red: 0.10, green: 0.07, blue: 0.06),
+                Color(red: 0.10, green: 0.07, blue: 0.06)
             ],
             startPoint: .topLeading,
             endPoint: .bottomTrailing
@@ -548,18 +548,18 @@ private enum SampleData {
         [
             UsageRecord(
                 provider: .claude, model: "claude-opus-4-7", day: day(daysAgo: 0),
-                inputTokens: 184_500, outputTokens: 96_200,
+                inputTokens: 184_500, outputTokens: 96200,
                 cacheReadTokens: 2_410_000, cacheCreationTokens: 312_000
             ),
             UsageRecord(
                 provider: .claude, model: "claude-sonnet-4-6", day: day(daysAgo: 0),
-                inputTokens: 58_300, outputTokens: 41_700,
-                cacheReadTokens: 690_000, cacheCreationTokens: 74_000
+                inputTokens: 58300, outputTokens: 41700,
+                cacheReadTokens: 690_000, cacheCreationTokens: 74000
             ),
             UsageRecord(
                 provider: .codex, model: "gpt-5.5", day: day(daysAgo: 0),
                 inputTokens: 432_000
-            ),
+            )
         ]
     }
 
@@ -572,12 +572,12 @@ private enum SampleData {
             records.append(
                 UsageRecord(
                     provider: .claude, model: "claude-opus-4-7", day: dayKey,
-                    inputTokens: 40_000, outputTokens: 24_000,
-                    cacheReadTokens: 360_000, cacheCreationTokens: 48_000
+                    inputTokens: 40000, outputTokens: 24000,
+                    cacheReadTokens: 360_000, cacheCreationTokens: 48000
                 )
             )
             records.append(
-                UsageRecord(provider: .codex, model: "gpt-5.5", day: dayKey, inputTokens: 70_000)
+                UsageRecord(provider: .codex, model: "gpt-5.5", day: dayKey, inputTokens: 70000)
             )
         }
         return records
