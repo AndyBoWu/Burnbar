@@ -55,6 +55,21 @@ Cloudflare zone settings and this Worker:
   the domain again. The Worker does not perform the redirect itself — that is the
   operator's "Always Use HTTPS" zone setting above.
 
+## DNS (3.6.1)
+
+`burnbar.andybowu.xyz` is bound to the `burnbar-site` Cloudflare Pages project
+via a **Custom Domain** (Workers & Pages → burnbar-site → Custom domains), which
+auto-created the DNS record and provisioned TLS. The live record:
+
+| Name | Type | Target | Proxied |
+|---|---|---|---|
+| `burnbar` | CNAME (proxied → shown as A at the edge) | `burnbar-site.pages.dev` | yes |
+
+Verify: `dig +short burnbar.andybowu.xyz` resolves to Cloudflare IPs and
+`curl -sI https://burnbar.andybowu.xyz/` returns `200`. Do **not** add the CNAME
+by hand in the DNS app — use the Pages Custom Domain flow so routing + cert are
+configured together.
+
 ## Domain routing (3.6.2)
 
 `burnbar.andybowu.xyz` serves two things off one hostname:
