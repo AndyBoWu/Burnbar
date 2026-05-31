@@ -3,6 +3,20 @@
 // touches per-machine, per-project, cwd, or raw-model data (none is exposed by
 // the API anyway — this client mirrors the public contract).
 
+/**
+ * Canonical readiness copy for the not-yet-live public leaderboard. This is the
+ * SINGLE source of truth for the "rolling out soon" wording so every surface —
+ * the landing page, the privacy page, the leaderboard, and profile pages — reads
+ * identically (issue #174). When the backend goes live (operator sets
+ * `NEXT_PUBLIC_API_URL`, issue #173), the not-configured branches stop rendering
+ * automatically; to flip the messaging everywhere, edit this one string.
+ */
+export const LEADERBOARD_ROLLING_OUT =
+  "The public leaderboard is rolling out soon." as const;
+
+/** Short badge/label form of {@link LEADERBOARD_ROLLING_OUT} for CTAs. */
+export const LEADERBOARD_ROLLING_OUT_SHORT = "Coming soon" as const;
+
 /** Period segments accepted by `GET /api/v1/leaderboard/:period`. */
 export const PERIODS = ["daily", "weekly", "monthly"] as const;
 export type Period = (typeof PERIODS)[number];
