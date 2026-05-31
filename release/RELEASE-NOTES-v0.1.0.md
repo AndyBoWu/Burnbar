@@ -46,9 +46,11 @@ and turn on **"Open at Login"**.
 ## Privacy
 
 Burnbar reads only local CLI logs under `~/.claude` and `~/.codex` — never
-browser data, never third-party Keychain items. The optional leaderboard uploads
-only non-identifying daily aggregates (`date, provider, tokens, cost_usd`) —
-never prompts, paths, project names, machine ids, or raw model names.
+browser data, never third-party Keychain items. If you opt in, each uploaded
+leaderboard row is only `{ date, provider, tokens, cost_usd }` — never prompts,
+paths, project names, machine ids, or raw model names. Rows are tied to your
+public GitHub identity (`github_id`, `github_login`), read from your sign-in, so
+they can appear on the public leaderboard.
 
 ## Known limitations
 

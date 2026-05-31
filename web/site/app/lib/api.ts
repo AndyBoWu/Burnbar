@@ -17,6 +17,67 @@ export const LEADERBOARD_ROLLING_OUT =
 /** Short badge/label form of {@link LEADERBOARD_ROLLING_OUT} for CTAs. */
 export const LEADERBOARD_ROLLING_OUT_SHORT = "Coming soon" as const;
 
+/**
+ * Canonical description of what a leaderboard upload actually sends — the SINGLE
+ * source of truth so the landing page and the privacy page (and, in wording, the
+ * app + release notes) describe the exact same thing and can never drift (issue
+ * #184).
+ *
+ * Ground truth, verified against code:
+ *   - Each uploaded row is EXACTLY these four non-identifying fields, in this
+ *     order, and nothing else. This is enforced three times over: the app's
+ *     `UploadPayloadValidator.allowedKeys` (Sources/BurnbarCore/Upload/
+ *     UploadPayloadValidator.swift), the `LeaderboardRecord` `CodingKeys`
+ *     (LeaderboardAggregator.swift — note `costUSD` serializes as `cost_usd`),
+ *     and the Worker's `validateUsage()` allowlist (web/src/app.ts), which is
+ *     the `daily_usage` column set (web/migrations/0002_create_daily_usage.sql).
+ *   - The GitHub identity is NOT part of the row body. The app sends the row with
+ *     `Authorization: Bearer <github-token>` (LeaderboardUploader.swift); the
+ *     Worker derives `github_id` / `github_login` server-side from that token
+ *     (web/src/auth.ts → GitHub `/user`) and stores them in the `users` table
+ *     (web/migrations/0001_create_users.sql). They are your public GitHub
+ *     account, attached so your row can appear on the public leaderboard.
+ *
+ * Editing the field list or the identity framing here updates every surface that
+ * renders from it.
+ */
+export const UPLOAD_PAYLOAD_FIELDS: { field: string; detail: string }[] = [
+  {
+    field: "date",
+    detail: "The calendar day a usage total belongs to (YYYY-MM-DD).",
+  },
+  {
+    field: "provider",
+    detail: 'Which CLI the usage came from — only "claude" or "codex".',
+  },
+  {
+    field: "tokens",
+    detail: "A single aggregate token count for that day and provider.",
+  },
+  {
+    field: "cost_usd",
+    detail: "The estimated US-dollar cost for that day and provider.",
+  },
+];
+
+/**
+ * The comma-separated wire field list, `date, provider, tokens, cost_usd`, for
+ * inline prose (e.g. the landing-page privacy promise). Derived from
+ * {@link UPLOAD_PAYLOAD_FIELDS} so it cannot drift from the field cards.
+ */
+export const UPLOAD_PAYLOAD_FIELD_LIST = UPLOAD_PAYLOAD_FIELDS.map((f) => f.field).join(", ");
+
+/**
+ * How the public GitHub identity is attached to an upload. It is NOT in the row
+ * body — the row is authenticated with your GitHub token and the server reads
+ * your public `github_id` / `github_login` from it to label your leaderboard row.
+ */
+export const UPLOAD_IDENTITY_FIELD: { field: string; detail: string } = {
+  field: "github_id / github_login",
+  detail:
+    "Your public GitHub numeric id and username. Not part of the uploaded row — the upload is authenticated with your GitHub token and the server reads these from it to label your row on the public leaderboard.",
+};
+
 /** Period segments accepted by `GET /api/v1/leaderboard/:period`. */
 export const PERIODS = ["daily", "weekly", "monthly"] as const;
 export type Period = (typeof PERIODS)[number];

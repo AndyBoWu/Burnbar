@@ -1,7 +1,10 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 
-import { LEADERBOARD_ROLLING_OUT_SHORT } from "@/app/lib/api";
+import {
+  LEADERBOARD_ROLLING_OUT_SHORT,
+  UPLOAD_PAYLOAD_FIELD_LIST,
+} from "@/app/lib/api";
 import {
   getLatestRelease,
   RELEASES_LATEST_URL,
@@ -170,7 +173,7 @@ const PROMISES: Promise[] = [
   },
   {
     label: "Minimal opt-in upload",
-    body: "If you join the leaderboard, Burnbar sends only { date, provider, tokens, cost } — no prompts, paths, project names, machine ids, or raw model names.",
+    body: `If you join the leaderboard, each uploaded row is only { ${UPLOAD_PAYLOAD_FIELD_LIST} } — no prompts, paths, project names, machine ids, or raw model names. Rows are tied to your public GitHub identity (github_id, github_login), read from your sign-in, so they can appear on the public leaderboard.`,
   },
 ];
 

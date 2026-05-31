@@ -1,7 +1,11 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 
-import { LEADERBOARD_ROLLING_OUT } from "@/app/lib/api";
+import {
+  LEADERBOARD_ROLLING_OUT,
+  UPLOAD_IDENTITY_FIELD,
+  UPLOAD_PAYLOAD_FIELDS,
+} from "@/app/lib/api";
 
 const PRIVACY_TITLE = "Privacy Policy — Burnbar";
 const PRIVACY_DESCRIPTION =
@@ -33,32 +37,16 @@ const REPO_URL = "https://github.com/AndyBoWu/Burnbar";
 const ISSUES_URL = `${REPO_URL}/issues`;
 const CONTACT_EMAIL = "bwu2sfu@gmail.com";
 
-// Reflects the upload payload accepted by the Worker's validateUsage()
-// allowlist (web/src/app.ts) plus the GitHub identity stored in the users
-// table (web/migrations/0001_create_users.sql).
-const COLLECTED: { field: string; detail: string }[] = [
-  {
-    field: "date",
-    detail: "The calendar day a usage total belongs to (YYYY-MM-DD).",
-  },
-  {
-    field: "provider",
-    detail: 'Which CLI the usage came from — only "claude" or "codex".',
-  },
-  {
-    field: "tokens",
-    detail: "A single aggregate token count for that day and provider.",
-  },
-  {
-    field: "cost_usd",
-    detail: "The estimated US-dollar cost for that day and provider.",
-  },
-  {
-    field: "github_id / github_login",
-    detail:
-      "Your public GitHub numeric id and username, used only to identify your row on the leaderboard.",
-  },
-];
+// The four wire fields of an uploaded row, reused verbatim from the single
+// source of truth (web/site/app/lib/api.ts) so this page and the landing page
+// can never describe different payloads (issue #184). The row body is exactly
+// these four, validated by the Worker's validateUsage() allowlist (web/src/app.ts).
+const UPLOADED_ROW_FIELDS = UPLOAD_PAYLOAD_FIELDS;
+
+// The attached public GitHub identity. NOT part of the uploaded row — the server
+// reads it from your authenticated GitHub token and stores it in the users table
+// (web/migrations/0001_create_users.sql) to label your leaderboard row.
+const IDENTITY_FIELD = UPLOAD_IDENTITY_FIELD;
 
 // Mirrors docs/data-sources.md "What Burnbar never reads (everywhere)" and the
 // server-side privacy gate in web/src/app.ts (validateUsage rejects any key
@@ -128,11 +116,12 @@ export default function PrivacyPage() {
             Burnbar runs entirely on your Mac. The only data that would ever leave
             your machine is a small daily usage rollup you upload to the
             leaderboard after you opt in. {LEADERBOARD_ROLLING_OUT} This is the
-            upload model it will use once live — that upload contains exactly
-            these fields and nothing else, and the server rejects any extra key:
+            upload model it will use once live — each uploaded row contains exactly
+            these four fields and nothing else, and the server rejects any extra
+            key:
           </p>
           <dl className="space-y-4">
-            {COLLECTED.map(({ field, detail }) => (
+            {UPLOADED_ROW_FIELDS.map(({ field, detail }) => (
               <div
                 key={field}
                 className="rounded-lg border border-zinc-800 bg-zinc-900/40 p-4"
@@ -145,6 +134,22 @@ export default function PrivacyPage() {
                 </dd>
               </div>
             ))}
+          </dl>
+          <p className="mt-6 leading-relaxed text-zinc-300">
+            Because the leaderboard is public, each row is tied to your GitHub
+            account. This identity is not part of the uploaded row — the upload is
+            authenticated with your GitHub token, and the server reads your public
+            identity from it:
+          </p>
+          <dl className="mt-4 space-y-4">
+            <div className="rounded-lg border border-zinc-800 bg-zinc-900/40 p-4">
+              <dt className="font-mono text-sm font-semibold text-orange-400">
+                {IDENTITY_FIELD.field}
+              </dt>
+              <dd className="mt-1 text-sm leading-relaxed text-zinc-400">
+                {IDENTITY_FIELD.detail}
+              </dd>
+            </div>
           </dl>
           <p className="mt-6 leading-relaxed text-zinc-300">
             The leaderboard supports two providers only — Claude Code and OpenAI

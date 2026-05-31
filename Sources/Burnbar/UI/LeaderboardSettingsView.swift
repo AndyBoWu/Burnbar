@@ -25,10 +25,12 @@ import SwiftUI
 /// 5. a **"View web profile"** link opening `https://burnbar.andybowu.xyz/u/<login>`
 ///    in the default browser (shown only once the public login is known).
 ///
-/// Only the date, provider, and aggregate token + cost totals ever leave the
-/// machine — the validator (#56) enforces that on every row. The profile link uses
-/// only the public GitHub login, never paths or machine ids (CLAUDE.md privacy
-/// thesis). English-only literals throughout, per the MVP constraint.
+/// Each uploaded row is only `{ date, provider, tokens, cost_usd }` — the
+/// validator (#56) enforces that on every row — tied to your public GitHub
+/// identity (`github_id` / `github_login`), which the server reads from your
+/// authenticated sign-in (never sent in the row body). The profile link uses only
+/// the public GitHub login, never paths or machine ids (CLAUDE.md privacy thesis).
+/// English-only literals throughout, per the MVP constraint.
 struct LeaderboardSettingsView: View {
     /// The opt-in consent flag — the gate the scheduler/uploader read. Bound to
     /// the toggle; default OFF (privacy posture). Stored under the shared
@@ -116,8 +118,10 @@ struct LeaderboardSettingsView: View {
                 Text("Publishing")
             } footer: {
                 Text(
-                    "Off by default. When on, Burnbar uploads only the date, provider, and your aggregate "
-                        + "token and cost totals — never your prompts, projects, or paths."
+                    "Off by default. When on, each uploaded row is only { date, provider, tokens, cost_usd } — "
+                        + "never your prompts, projects, paths, machine ids, or raw model names. Rows are tied to "
+                        + "your public GitHub identity (github_id, github_login), read from your sign-in, so they "
+                        + "can appear on the public leaderboard."
                 )
                 .font(.caption)
                 .foregroundStyle(.secondary)
@@ -237,8 +241,10 @@ struct LeaderboardAccountSection: View {
             Text("Account")
         } footer: {
             Text(
-                "Sign in to publish your daily totals to the public leaderboard. Only the date, provider, "
-                    + "and aggregate token + cost totals are uploaded — never your prompts, projects, or paths."
+                "Sign in to publish your daily totals to the public leaderboard. Each uploaded row is only "
+                    + "{ date, provider, tokens, cost_usd }, tied to your public GitHub identity "
+                    + "(github_id, github_login) so your row can appear publicly — never your prompts, "
+                    + "projects, or paths."
             )
             .font(.caption)
             .foregroundStyle(.secondary)
