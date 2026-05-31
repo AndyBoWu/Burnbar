@@ -57,14 +57,33 @@ struct SettingsView: View {
 
 // MARK: - General
 
-/// Theme + refresh-rate controls. Theme changes apply immediately to the app's
-/// `NSApp.appearance`; both selections persist via `@AppStorage`.
+/// Theme + refresh-rate controls plus the "Open at Login" toggle. Theme changes
+/// apply immediately to the app's `NSApp.appearance`; theme + refresh selections
+/// persist via `@AppStorage`. The login-item toggle's truth is the system, not a
+/// stored bool — it derives from `SMAppService.mainApp.status` via
+/// ``LoginItemController``, so it reflects the real login item even when the user
+/// changes it in System Settings.
 private struct GeneralSettingsView: View {
     @AppStorage(PreferenceKeys.theme) private var themeRaw = AppTheme.default.rawValue
     @AppStorage(PreferenceKeys.refreshInterval)
     private var refreshRaw = RefreshInterval.default.rawValue
 
+    /// Owns the `SMAppService.mainApp` login-item state. `@StateObject` so it
+    /// survives view re-renders; its `@Published` `isEnabled`/`errorMessage`
+    /// drive the toggle and the inline failure note.
+    @StateObject private var loginItem = LoginItemController()
+
     private var theme: AppTheme { AppTheme.fromStorage(themeRaw) }
+
+    /// The toggle binds to a derived binding so flipping it routes through
+    /// ``LoginItemController/setEnabled(_:)`` (which talks to the system and
+    /// resyncs to the real `.status`), never to a free-floating local bool.
+    private var openAtLoginBinding: Binding<Bool> {
+        Binding(
+            get: { loginItem.isEnabled },
+            set: { loginItem.setEnabled($0) }
+        )
+    }
 
     var body: some View {
         Form {
@@ -85,11 +104,30 @@ private struct GeneralSettingsView: View {
             Text("How often Burnbar re-reads your local Claude and Codex usage.")
                 .font(.caption)
                 .foregroundStyle(.secondary)
+
+            Section {
+                Toggle("Open at Login", isOn: openAtLoginBinding)
+                if let message = loginItem.errorMessage {
+                    Label(message, systemImage: "exclamationmark.triangle.fill")
+                        .font(.caption)
+                        .foregroundStyle(.orange)
+                        .labelStyle(.titleAndIcon)
+                }
+            } footer: {
+                Text("Launch Burnbar automatically when you log in to this Mac.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
         }
         .formStyle(.grouped)
         // Apply the persisted theme on appear and whenever it changes, so the
-        // choice takes effect live and is restored on relaunch.
-        .onAppear { AppearanceController.apply(theme) }
+        // choice takes effect live and is restored on relaunch. Also re-read the
+        // live login-item status so the toggle reflects any change made in System
+        // Settings while Burnbar was running.
+        .onAppear {
+            AppearanceController.apply(theme)
+            loginItem.refresh()
+        }
         .onChange(of: themeRaw) { _, _ in
             AppearanceController.apply(theme)
         }
