@@ -87,7 +87,7 @@ const IS_NOTARIZED = false;
  *      `SCREENSHOTS` below have a file present (mark `available: true`).
  * No other edits needed.
  */
-const HAS_SCREENSHOTS = false;
+const HAS_SCREENSHOTS = true;
 
 type Screenshot = {
   /** Path under `public/` — e.g. `/screenshots/popover.png`. */
@@ -118,33 +118,33 @@ const SCREENSHOTS: Screenshot[] = [
     alt: "Burnbar's flame status item in the macOS menu bar, showing today's token spend next to the clock.",
     caption: "Lives in your menu bar — today's burn at a glance.",
     width: 1600,
-    height: 200,
+    height: 76,
     wide: true,
-    available: false,
+    available: true,
   },
   {
     src: "/screenshots/popover.png",
     alt: "Burnbar's popover listing Claude Code and OpenAI Codex token usage with per-provider costs for today.",
     caption: "The popover: per-provider tokens and cost.",
-    width: 720,
-    height: 960,
-    available: false,
+    width: 680,
+    height: 1056,
+    available: true,
   },
   {
     src: "/screenshots/empty-state.png",
     alt: "Burnbar's popover empty state, shown before any usage has been recorded, with guidance on getting started.",
     caption: "A friendly, actionable empty state on day one.",
-    width: 720,
-    height: 960,
-    available: false,
+    width: 680,
+    height: 756,
+    available: true,
   },
   {
     src: "/screenshots/settings.png",
-    alt: "Burnbar's Settings window showing provider toggles and the opt-in leaderboard controls.",
-    caption: "Settings: providers and the opt-in leaderboard.",
-    width: 1280,
-    height: 900,
-    available: false,
+    alt: "Burnbar's Settings window showing the opt-in leaderboard controls and GitHub sign-in.",
+    caption: "Settings: GitHub sign-in and the opt-in leaderboard.",
+    width: 1016,
+    height: 984,
+    available: true,
   },
 ];
 

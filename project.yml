@@ -69,6 +69,28 @@ targets:
         PRODUCT_BUNDLE_IDENTIFIER: xyz.andybowu.BurnbarCoreTests
         GENERATE_INFOPLIST_FILE: YES
 
+  # Renders the real app SwiftUI views (popover, settings, menu-bar mock) to PNGs
+  # via SwiftUI's `ImageRenderer` — no Screen Recording permission, no live
+  # screencapture. Hosted by the Burnbar app target so `@testable import Burnbar`
+  # reaches the internal views + the DEBUG-only `UsageStore` seed init (issue #177).
+  # Output PNGs go to a temp dir; `Scripts/render_screenshots.sh` copies them into
+  # `web/site/public/screenshots/`. Excluded from the default test scheme so a
+  # normal `xcodebuild test` stays headless and host-free.
+  BurnbarScreenshotTests:
+    type: bundle.unit-test
+    platform: macOS
+    sources:
+      - Tests/BurnbarScreenshotTests
+    dependencies:
+      - target: Burnbar
+      - target: BurnbarCore
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: xyz.andybowu.BurnbarScreenshotTests
+        GENERATE_INFOPLIST_FILE: YES
+        TEST_HOST: "$(BUILT_PRODUCTS_DIR)/Burnbar.app/Contents/MacOS/Burnbar"
+        BUNDLE_LOADER: "$(TEST_HOST)"
+
 schemes:
   Burnbar:
     build:
@@ -81,3 +103,18 @@ schemes:
     test:
       targets:
         - BurnbarCoreTests
+
+  # Builds the app + the screenshot renderer and runs only the renderer test, which
+  # writes the landing-page PNGs (issue #177). Kept separate from the default
+  # `Burnbar` scheme so the regular test run stays headless.
+  BurnbarScreenshots:
+    build:
+      targets:
+        Burnbar: all
+        BurnbarCore: all
+        BurnbarScreenshotTests: [test]
+    run:
+      config: Debug
+    test:
+      targets:
+        - BurnbarScreenshotTests

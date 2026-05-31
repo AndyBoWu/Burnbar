@@ -12,16 +12,32 @@ placeholders.
 
 ## How to produce them
 
-Run the capture tool on a Mac **with Screen Recording permission** granted to
-your terminal (System Settings → Privacy & Security → Screen Recording):
+The committed PNGs are rendered from the app's real SwiftUI views (the `popover`
+tiles + burn bars are the genuine `ProviderTileView` / `BurnBarView`) via SwiftUI's
+`ImageRenderer` — **no Screen Recording permission and no `screencapture`**. They
+are fed synthetic sample data (token counts + known model ids only; never a real
+prompt, path, or project). Regenerate them with:
+
+```bash
+./Scripts/render_screenshots.sh
+```
+
+It runs the `BurnbarScreenshotTests` target (hosted by the app, `@testable import`)
+and copies the PNGs into this folder. `ImageRenderer` can't draw AppKit-backed
+controls (`Form`, segmented `Picker`, `Toggle`), so the `settings` shot and the
+popover's mode picker use clearly-representative SwiftUI stand-ins; everything with
+real data is the production view.
+
+A legacy interactive capture path also exists for a Mac **with Screen Recording
+permission** (System Settings → Privacy & Security → Screen Recording):
 
 ```bash
 ./Scripts/capture_screenshots.sh
 ```
 
-It builds + launches `Burnbar.app` and walks you through capturing each shot
-into this folder. See the script header for the permission requirement and the
-privacy checklist.
+It builds + launches `Burnbar.app` and walks you through capturing each shot into
+this folder. See the script header for the permission requirement and the privacy
+checklist.
 
 ## Required files
 
