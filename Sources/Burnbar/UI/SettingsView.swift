@@ -712,10 +712,10 @@ private struct LeaderboardAccountSection: View {
 private struct AboutSettingsView: View {
     /// Burnbar's GitHub repository.
     private static let gitHubURL = URL(string: "https://github.com/AndyBoWu/Burnbar")!
-    /// Public privacy statement. The repo README documents Burnbar's privacy
-    /// thesis (local logs only; never browser secrets or Keychain).
+    /// Public privacy statement. The deployed privacy policy documents Burnbar's
+    /// privacy thesis (local logs only; never browser secrets or Keychain).
     private static let privacyURL = URL(
-        string: "https://github.com/AndyBoWu/Burnbar#readme"
+        string: "https://burnbar.andybowu.xyz/privacy"
     )!
 
     var body: some View {
