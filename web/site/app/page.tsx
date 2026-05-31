@@ -3,10 +3,27 @@ import Link from "next/link";
 
 const RELEASES_URL = "https://github.com/AndyBoWu/Burnbar/releases";
 
+const LANDING_TITLE = "Burnbar — Track AI-coding token burn in your menu bar";
+const LANDING_DESCRIPTION =
+  "Burnbar is a native macOS menu-bar app that tracks your Claude Code and OpenAI Codex token usage by reading only local CLI logs. No browser data, no third-party Keychain access.";
+
 export const metadata: Metadata = {
-  title: "Burnbar — Track AI-coding token burn in your menu bar",
-  description:
-    "Burnbar is a native macOS menu-bar app that tracks your Claude Code and OpenAI Codex token usage by reading only local CLI logs. No browser data, no third-party Keychain access.",
+  title: LANDING_TITLE,
+  description: LANDING_DESCRIPTION,
+  alternates: {
+    canonical: "/",
+  },
+  // Explicit social title/description so the landing page's preview describes
+  // the product, not the leaderboard (it must not inherit a generic default).
+  openGraph: {
+    title: LANDING_TITLE,
+    description: LANDING_DESCRIPTION,
+    url: "/",
+  },
+  twitter: {
+    title: LANDING_TITLE,
+    description: LANDING_DESCRIPTION,
+  },
 };
 
 type Pillar = {

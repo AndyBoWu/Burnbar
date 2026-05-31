@@ -1,10 +1,26 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 
+const PRIVACY_TITLE = "Privacy Policy — Burnbar";
+const PRIVACY_DESCRIPTION =
+  "What Burnbar collects, what it never touches, how long data is kept, and how to opt out or delete everything.";
+
 export const metadata: Metadata = {
-  title: "Privacy Policy — Burnbar",
-  description:
-    "What Burnbar collects, what it never touches, how long data is kept, and how to opt out or delete everything.",
+  title: PRIVACY_TITLE,
+  description: PRIVACY_DESCRIPTION,
+  // Self-canonical so this page is not collapsed under the site root.
+  alternates: {
+    canonical: "/privacy",
+  },
+  openGraph: {
+    title: PRIVACY_TITLE,
+    description: PRIVACY_DESCRIPTION,
+    url: "/privacy",
+  },
+  twitter: {
+    title: PRIVACY_TITLE,
+    description: PRIVACY_DESCRIPTION,
+  },
 };
 
 // Static page — no data fetching, fully prerendered at build time.

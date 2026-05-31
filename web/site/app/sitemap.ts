@@ -7,7 +7,7 @@ const BASE_URL = "https://burnbar.andybowu.xyz";
 // Public, indexable routes only. Per-user profile routes (`/u/:login`) are
 // intentionally excluded: they are user-generated, may be opted out (Epic 3.5.1),
 // and exposing them here would leak the member list. The bare `/leaderboard`
-// route just 302s to `/leaderboard/daily`, so we list the canonical period URLs.
+// route just 308s to `/leaderboard/daily`, so we list the canonical period URLs.
 export default function sitemap(): MetadataRoute.Sitemap {
   const now = new Date();
 
