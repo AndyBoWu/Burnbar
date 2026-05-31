@@ -14,6 +14,9 @@ final class MenuBarController: NSObject {
     private let statusItem: NSStatusItem
     private let popover: NSPopover
     private let store = UsageStore()
+    /// One-time first-launch welcome popover (#179), built lazily the first time
+    /// it is shown and torn down on dismiss. `nil` whenever it is not on screen.
+    private var onboardingPopover: NSPopover?
     /// Background refresh timer, re-armed from the persisted refresh rate (1.5.6)
     /// on launch and whenever the setting changes.
     private var refreshTimer: Timer?
@@ -89,6 +92,59 @@ final class MenuBarController: NSObject {
         store.refresh()
         rearmRefreshTimer()
         startICloudMonitoring()
+        presentFirstRunOnboardingIfNeeded()
+    }
+
+    // MARK: - First-run onboarding (#179)
+
+    /// On the very first launch — and never again — open a small welcome popover
+    /// anchored to the status-item flame so the user *sees* Burnbar appear in the
+    /// menu bar (the app is an `LSUIElement` agent with no Dock icon, so launch is
+    /// otherwise silent). Gated by `PreferenceKeys.firstRunOnboardingShown`, which
+    /// is flipped `true` immediately so the cue is one-time and non-recurring even
+    /// if the user quits before dismissing it.
+    ///
+    /// Deferred to the next run-loop turn so the status bar has laid out its button
+    /// (anchoring `relativeTo:` a zero-frame button drops the popover in the wrong
+    /// place during `applicationDidFinishLaunching`).
+    private func presentFirstRunOnboardingIfNeeded() {
+        let defaults = UserDefaults.standard
+        guard !defaults.bool(forKey: PreferenceKeys.firstRunOnboardingShown) else { return }
+        defaults.set(true, forKey: PreferenceKeys.firstRunOnboardingShown)
+
+        DispatchQueue.main.async { [weak self] in
+            self?.showOnboardingPopover()
+        }
+    }
+
+    /// Build and show the onboarding popover under the status item. The popover is
+    /// `.transient` so a click anywhere else dismisses it; "Got it" and "Open
+    /// Settings" route back through `closeOnboarding()`.
+    private func showOnboardingPopover() {
+        guard let button = statusItem.button else { return }
+
+        let popover = NSPopover()
+        popover.behavior = .transient
+        popover.contentViewController = NSHostingController(
+            rootView: FirstRunOnboardingView(
+                onDismiss: { [weak self] in self?.closeOnboarding() },
+                onOpenSettings: { [weak self] in
+                    self?.closeOnboarding()
+                    MenuActions.openSettings()
+                }
+            )
+        )
+        onboardingPopover = popover
+
+        popover.show(relativeTo: button.bounds, of: button, preferredEdge: .minY)
+        popover.contentViewController?.view.window?.makeKey()
+    }
+
+    /// Dismiss and release the onboarding popover. Safe to call when it is already
+    /// gone (e.g. the user clicked away, which `.transient` closes for us).
+    private func closeOnboarding() {
+        onboardingPopover?.performClose(nil)
+        onboardingPopover = nil
     }
 
     /// Re-create the background refresh timer from the persisted refresh rate.
@@ -229,6 +285,10 @@ final class MenuBarController: NSObject {
     /// context menu; any other click toggles the popover. Left-click behavior is
     /// unchanged from 1.5.1.
     @objc private func handleClick() {
+        // Any deliberate status-item interaction supersedes the first-run welcome,
+        // so dismiss it before toggling the popover or showing the menu (`.transient`
+        // usually closes it on the outside click, but this is the explicit guarantee).
+        closeOnboarding()
         let event = NSApp.currentEvent
         let isRightClick = event?.type == .rightMouseUp
             || (event?.type == .leftMouseUp && event?.modifierFlags.contains(.control) == true)

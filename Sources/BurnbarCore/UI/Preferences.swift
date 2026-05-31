@@ -24,6 +24,10 @@ public enum PreferenceKeys {
     public static let claudeEnabled = "xyz.andybowu.Burnbar.provider.claude.enabled"
     /// Whether the Codex parser runs (`Bool`).
     public static let codexEnabled = "xyz.andybowu.Burnbar.provider.codex.enabled"
+    /// Whether the one-time, first-launch menu-bar onboarding cue has already
+    /// been shown (`Bool`). Absent/`false` on a fresh install; set `true` after
+    /// the cue runs so it never recurs. See `MenuBarController`.
+    public static let firstRunOnboardingShown = "xyz.andybowu.Burnbar.firstRunOnboardingShown"
 
     /// Both providers default ON: a fresh install reads everything it can until
     /// the user opts a provider out.
