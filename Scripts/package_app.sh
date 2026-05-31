@@ -13,6 +13,12 @@
 # Ad-hoc means Gatekeeper quarantines downloads — users right-click -> Open the
 # first time. See README.
 #
+# Extended attributes / resource forks are stripped (`xattr -cr`) BEFORE signing,
+# and the zip is written with `ditto --norsrc --noextattr --noqtn`, so the archive
+# carries no AppleDouble `._*` entries. Those entries leak through plain `unzip`
+# and break strict signature verification ("sealed resource is missing or
+# invalid"). Stripping before signing keeps the seal intact (#171).
+#
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
@@ -45,6 +51,13 @@ APP="$BUILD_DIR/Build/Products/Release/Burnbar.app"
 VERSION="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$APP/Contents/Info.plist")"
 echo "==> Version $VERSION"
 
+# Strip extended attributes / resource forks *before* signing so the seal is
+# computed over the clean bundle. Doing this after signing would invalidate the
+# CodeResources hashes; doing it before means there's nothing for ditto to spill
+# into AppleDouble `._*` companions later (#171).
+echo "==> Stripping extended attributes (no AppleDouble in the zip)"
+xattr -cr "$APP"
+
 echo "==> Ad-hoc signing (--deep covers the embedded BurnbarCore.framework)"
 codesign --force --deep --sign - "$APP"
 codesign --verify --verbose=2 "$APP"
@@ -53,7 +66,10 @@ mkdir -p dist
 ZIP="dist/Burnbar-v$VERSION.zip"
 rm -f "$ZIP"
 echo "==> Packaging -> $ZIP"
-ditto -c -k --keepParent "$APP" "$ZIP"
+# --norsrc/--noextattr/--noqtn keep resource forks, extended attributes, and the
+# quarantine flag out of the archive so no AppleDouble `._*` entries are written
+# (the bundle was already stripped + signed above) (#171).
+ditto -c -k --keepParent --norsrc --noextattr --noqtn "$APP" "$ZIP"
 
 echo ""
 echo "Artifact: $ZIP"
