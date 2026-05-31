@@ -7,6 +7,21 @@ const LANDING_TITLE = "Burnbar — Track AI-coding token burn in your menu bar";
 const LANDING_DESCRIPTION =
   "Burnbar is a native macOS menu-bar app that tracks your Claude Code and OpenAI Codex token usage by reading only local CLI logs. No browser data, no third-party Keychain access.";
 
+/** Minimum supported macOS version. Burnbar targets macOS 14+ (Sonoma). */
+const MIN_MACOS = "macOS 14 (Sonoma)";
+
+/**
+ * Whether the shipped build is Apple-notarized. While `false`, the install
+ * steps include the first-open Gatekeeper workaround (right-click → Open),
+ * because ad-hoc-signed builds trip Gatekeeper on first launch.
+ *
+ * REMOVABILITY: once notarization ships (issue #167), flip this to `true`. The
+ * right-click → Open step then disappears automatically — no other edits
+ * needed. The macOS 14+ requirement and the move-to-Applications steps stay
+ * regardless of notarization status.
+ */
+const IS_NOTARIZED = false;
+
 export const metadata: Metadata = {
   title: LANDING_TITLE,
   description: LANDING_DESCRIPTION,
@@ -144,6 +159,17 @@ export default async function HomePage() {
   const downloadLabel = release.version
     ? `Download for macOS (${release.version})`
     : "Download for macOS";
+
+  // Tailor the "unpack and move" step to whichever artifact the release ships.
+  // The resolver prefers a .dmg (drag-to-Applications) and falls back to a .zip;
+  // when neither is resolved (API fallback) we cover both so the copy is always
+  // accurate.
+  const assetName = release.recommendedAsset?.name.toLowerCase() ?? "";
+  const unpackStep = assetName.endsWith(".dmg")
+    ? "Open the downloaded .dmg and drag Burnbar.app into the Applications folder."
+    : assetName.endsWith(".zip")
+      ? "Unzip the download and move Burnbar.app into the Applications folder."
+      : "Open the .dmg (or unzip the .zip) and move Burnbar.app into the Applications folder.";
 
   return (
     <div className="flex min-h-screen flex-col">
@@ -383,6 +409,85 @@ export default async function HomePage() {
               </div>
             ))}
           </dl>
+        </section>
+
+        <section
+          aria-labelledby="install-heading"
+          className="border-t border-zinc-900 py-20"
+        >
+          <h2
+            id="install-heading"
+            className="text-2xl font-bold tracking-tight text-zinc-50 sm:text-3xl"
+          >
+            Installing Burnbar
+          </h2>
+          <p className="mt-4 max-w-2xl text-zinc-300">
+            Requires {MIN_MACOS} or later. Burnbar lives in your menu bar — there
+            is no Dock icon, so after launch look for it up top, next to the
+            clock.
+          </p>
+          <ol className="mt-10 flex flex-col gap-4">
+            <li className="flex gap-4 rounded-xl border border-zinc-800 bg-zinc-900/40 p-5">
+              <span
+                aria-hidden="true"
+                className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-orange-500/10 text-sm font-bold text-orange-400"
+              >
+                1
+              </span>
+              <div>
+                <h3 className="text-base font-semibold text-zinc-100">
+                  Download Burnbar
+                </h3>
+                <p className="mt-1 text-sm leading-relaxed text-zinc-400">
+                  Grab the latest macOS build using the Download button above.
+                </p>
+              </div>
+            </li>
+            <li className="flex gap-4 rounded-xl border border-zinc-800 bg-zinc-900/40 p-5">
+              <span
+                aria-hidden="true"
+                className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-orange-500/10 text-sm font-bold text-orange-400"
+              >
+                2
+              </span>
+              <div>
+                <h3 className="text-base font-semibold text-zinc-100">
+                  Move it to Applications
+                </h3>
+                <p className="mt-1 text-sm leading-relaxed text-zinc-400">
+                  {unpackStep}
+                </p>
+              </div>
+            </li>
+            {/*
+              Gatekeeper note — gated on IS_NOTARIZED. This step renders only
+              while the build is NOT notarized. After notarization ships
+              (issue #167), flip IS_NOTARIZED to true and this whole step
+              disappears; the steps above stay.
+            */}
+            {!IS_NOTARIZED && (
+              <li className="flex gap-4 rounded-xl border border-zinc-800 bg-zinc-900/40 p-5">
+                <span
+                  aria-hidden="true"
+                  className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-orange-500/10 text-sm font-bold text-orange-400"
+                >
+                  3
+                </span>
+                <div>
+                  <h3 className="text-base font-semibold text-zinc-100">
+                    Open it the first time
+                  </h3>
+                  <p className="mt-1 text-sm leading-relaxed text-zinc-400">
+                    Right-click (or Control-click) Burnbar.app in Applications and
+                    choose <span className="text-zinc-200">Open</span>, then
+                    confirm in the dialog. This one-time step is needed because
+                    this build isn’t notarized by Apple yet — after that, launch
+                    it normally.
+                  </p>
+                </div>
+              </li>
+            )}
+          </ol>
         </section>
 
         <section
