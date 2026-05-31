@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 
-const RELEASES_URL = "https://github.com/AndyBoWu/Burnbar/releases";
+import { getLatestRelease, RELEASES_URL } from "@/app/lib/release";
 
 const LANDING_TITLE = "Burnbar — Track AI-coding token burn in your menu bar";
 const LANDING_DESCRIPTION =
@@ -136,7 +136,15 @@ function Mark({ value }: { value: Cell }) {
   );
 }
 
-export default function HomePage() {
+export default async function HomePage() {
+  // Resolve the latest macOS artifact at build time so the primary CTAs link
+  // DIRECTLY to the recommended download (issue #168). On any API failure this
+  // falls back to the /releases/latest page, so the build never breaks.
+  const release = await getLatestRelease();
+  const downloadLabel = release.version
+    ? `Download for macOS (${release.version})`
+    : "Download for macOS";
+
   return (
     <div className="flex min-h-screen flex-col">
       <header>
@@ -155,7 +163,8 @@ export default function HomePage() {
               Leaderboard
             </Link>
             <a
-              href={RELEASES_URL}
+              href={release.downloadUrl}
+              {...(release.isDirectDownload ? { download: "" } : {})}
               className="rounded-md bg-orange-500 px-3 py-1.5 font-medium text-zinc-950 transition-colors hover:bg-orange-400"
             >
               Download
@@ -186,10 +195,11 @@ export default function HomePage() {
           </p>
           <div className="mt-2 flex flex-col items-center gap-4 sm:flex-row">
             <a
-              href={RELEASES_URL}
+              href={release.downloadUrl}
+              {...(release.isDirectDownload ? { download: "" } : {})}
               className="rounded-md bg-orange-500 px-6 py-3 text-base font-semibold text-zinc-950 transition-colors hover:bg-orange-400"
             >
-              Download for macOS
+              {downloadLabel}
             </a>
             <Link
               href="/leaderboard"
@@ -198,6 +208,15 @@ export default function HomePage() {
               View the leaderboard
             </Link>
           </div>
+          <p className="text-sm text-zinc-500">
+            macOS 14+ ·{" "}
+            <a
+              href={RELEASES_URL}
+              className="underline underline-offset-2 transition-colors hover:text-zinc-300"
+            >
+              View all releases
+            </a>
+          </p>
         </section>
 
         <section
@@ -382,10 +401,17 @@ export default function HomePage() {
               your privacy.
             </p>
             <a
-              href={RELEASES_URL}
+              href={release.downloadUrl}
+              {...(release.isDirectDownload ? { download: "" } : {})}
               className="rounded-md bg-orange-500 px-6 py-3 text-base font-semibold text-zinc-950 transition-colors hover:bg-orange-400"
             >
-              Download for macOS
+              {downloadLabel}
+            </a>
+            <a
+              href={RELEASES_URL}
+              className="text-sm text-zinc-500 underline underline-offset-2 transition-colors hover:text-zinc-300"
+            >
+              View all releases
             </a>
           </div>
         </section>
