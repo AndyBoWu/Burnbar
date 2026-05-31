@@ -1,0 +1,116 @@
+name: Deploy Site
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "web/site/**"
+      - ".github/workflows/deploy-site.yml"
+  pull_request:
+    branches: [main]
+    paths:
+      - "web/site/**"
+      - ".github/workflows/deploy-site.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event_name == 'pull_request' && github.head_ref || github.ref }}
+  cancel-in-progress: false
+
+env:
+  SITE_DIR: web/site
+  NODE_VERSION: "20"
+  NEXT_PUBLIC_API_URL: ${{ vars.NEXT_PUBLIC_API_URL || 'https://burnbar.andybowu.xyz' }}
+  HAS_CLOUDFLARE_CREDS: ${{ secrets.CLOUDFLARE_API_TOKEN != '' && secrets.CLOUDFLARE_ACCOUNT_ID != '' }}
+  IS_TRUSTED_PR: ${{ github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository }}
+
+jobs:
+  build-deploy:
+    name: Build + Deploy Site
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320 # v4.4.0
+        with:
+          version: 10.23.0
+          run_install: false
+
+      - name: Set up Node
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+          cache-dependency-path: ${{ env.SITE_DIR }}/pnpm-lock.yaml
+
+      - name: Install dependencies
+        working-directory: ${{ env.SITE_DIR }}
+        run: pnpm install --frozen-lockfile
+
+      - name: Typecheck
+        working-directory: ${{ env.SITE_DIR }}
+        run: pnpm typecheck
+
+      - name: Build Pages artifact
+        working-directory: ${{ env.SITE_DIR }}
+        run: pnpm pages:build
+
+      - name: Resolve deploy branch
+        id: deploy-branch
+        shell: bash
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          HEAD_REF: ${{ github.head_ref }}
+          REF_NAME: ${{ github.ref_name }}
+        run: |
+          if [ "${EVENT_NAME}" = "pull_request" ]; then
+            branch="${HEAD_REF}"
+          else
+            branch="${REF_NAME}"
+          fi
+
+          safe_branch="$(printf '%s' "${branch}" | LC_ALL=C tr -cs 'A-Za-z0-9._-' '-' | sed 's/^-*//; s/-*$//')"
+          if [ -z "${safe_branch}" ]; then
+            safe_branch="preview-${GITHUB_RUN_ID}"
+          fi
+
+          echo "branch=${safe_branch}" >> "$GITHUB_OUTPUT"
+          echo "Deploy branch: ${safe_branch}"
+
+      - name: Explain skipped deploy
+        if: ${{ env.HAS_CLOUDFLARE_CREDS != 'true' || env.IS_TRUSTED_PR != 'true' }}
+        env:
+          CREDS_CONFIGURED: ${{ env.HAS_CLOUDFLARE_CREDS }}
+          TRUSTED_SOURCE: ${{ env.IS_TRUSTED_PR }}
+        run: |
+          echo "Skipping Cloudflare Pages deploy."
+          echo "Credentials configured: ${CREDS_CONFIGURED}"
+          echo "Trusted PR/source: ${TRUSTED_SOURCE}"
+
+      - name: Deploy to Cloudflare Pages
+        id: deploy
+        if: ${{ env.HAS_CLOUDFLARE_CREDS == 'true' && env.IS_TRUSTED_PR == 'true' }}
+        uses: cloudflare/wrangler-action@9acf94ace14e7dc412b076f2c5c20b8ce93c79cd # v3.15.0
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: pages deploy --branch "${{ steps.deploy-branch.outputs.branch }}"
+          packageManager: pnpm
+          workingDirectory: ${{ env.SITE_DIR }}
+          wranglerVersion: "3.114.17"
+
+      - name: Print deployment URL
+        if: ${{ steps.deploy.outputs.deployment-url != '' }}
+        env:
+          DEPLOYMENT_URL: ${{ steps.deploy.outputs.deployment-url }}
+          DEPLOYMENT_ALIAS_URL: ${{ steps.deploy.outputs.pages-deployment-alias-url }}
+        run: |
+          echo "Deployment URL: ${DEPLOYMENT_URL}"
+          if [ -n "${DEPLOYMENT_ALIAS_URL}" ]; then
+            echo "Deployment alias URL: ${DEPLOYMENT_ALIAS_URL}"
+          fi

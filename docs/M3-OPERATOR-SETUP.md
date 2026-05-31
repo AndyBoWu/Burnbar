@@ -31,6 +31,20 @@ npm run migrate:prod    && npm run deploy:prod
 
 ## 3. Web frontend → Cloudflare Pages (unblocks #62 deploy, #88)
 
+Preferred path: configure GitHub Actions and let
+`.github/workflows/deploy-site.yml` deploy `web/site`.
+
+Set these in GitHub first:
+
+- Secret `CLOUDFLARE_API_TOKEN`
+- Secret `CLOUDFLARE_ACCOUNT_ID`
+- Variable `NEXT_PUBLIC_API_URL=https://burnbar.andybowu.xyz`
+
+After that, pushes to `main` that touch `web/site/**` deploy production.
+Pull requests from trusted same-repo branches get Pages previews.
+
+Manual fallback:
+
 ```bash
 cd web/site
 pnpm install && pnpm build
