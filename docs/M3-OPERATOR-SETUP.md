@@ -81,6 +81,98 @@ gh release create vX.Y.Z dist/Burnbar-vX.Y.Z.zip dist/Burnbar-vX.Y.Z.dmg
 Then create a PUBLIC `andybowu/homebrew-tap` repo and add `Casks/burnbar.rb`
 pointing at the release zip + sha256 (`Scripts/update_cask.sh` automates
 version+sha bumps once it lands). `brew install --cask andybowu/tap/burnbar`
-then works (right-click → Open first launch, since v0 is ad-hoc signed — see
-ROADMAP.md). Developer ID signing + notarization is tracked by #167, which slots
-into the release workflow at the marked insertion point.
+then works. Until Developer ID signing + notarization is enabled (next section),
+v0 ships ad-hoc signed, so first launch needs right-click → Open — see
+ROADMAP.md and the cask's `postflight` quarantine strip.
+
+## 6. Developer ID signing + notarization (#167)
+
+Until this is set up, releases are **ad-hoc signed** (`Signature=adhoc`,
+`TeamIdentifier=not set`) and Gatekeeper rejects a fresh download
+(`spctl --assess` → `rejected`), forcing right-click → Open. The tooling for the
+full Developer ID + hardened-runtime + notarization + stapling flow is already in
+the repo and **activates automatically once the secrets below exist** — nothing
+in the scripts or workflow changes. This step needs a paid Apple Developer
+account ($99/yr); it is the only blocker.
+
+### 6a. One-time Apple Developer assets
+
+1. **Developer ID Application certificate.** Apple Developer → Certificates → `+`
+   → **Developer ID Application** (NOT "Apple Distribution" / "Mac App Store").
+   Create it, download the `.cer`, double-click to add it to your **login**
+   keychain. In **Keychain Access** confirm the private key sits under the cert.
+2. **Export the signing identity as a `.p12`.** In Keychain Access select **both**
+   the "Developer ID Application: …" cert **and** its private key → right-click →
+   **Export 2 items…** → `.p12`, set a strong password. This password becomes the
+   `MACOS_CERTIFICATE_PWD` secret.
+3. **Note the identity string + Team ID.** Run locally:
+   ```bash
+   security find-identity -v -p codesigning
+   # → "Developer ID Application: Andy Wu (TEAMID)"  ← the full quoted string
+   ```
+   The full quoted string is `MACOS_SIGNING_IDENTITY`; the 10-char `(TEAMID)` is
+   `APPLE_TEAM_ID`.
+4. **App-specific password for notarytool.** appleid.apple.com → Sign-In &
+   Security → **App-Specific Passwords** → generate one labelled `burnbar-notary`.
+   This is `APPLE_APP_SPECIFIC_PASSWORD`; your Apple ID email is `APPLE_ID`.
+
+### 6b. Add the GitHub repo secrets
+
+Settings → Secrets and variables → **Actions** → New repository secret, for each:
+
+| Secret | Value |
+| --- | --- |
+| `MACOS_CERTIFICATE` | base64 of the `.p12`: `base64 -i DeveloperID.p12 \| pbcopy` |
+| `MACOS_CERTIFICATE_PWD` | the `.p12` export password from 6a-2 |
+| `MACOS_SIGNING_IDENTITY` | `Developer ID Application: Andy Wu (TEAMID)` |
+| `KEYCHAIN_PASSWORD` | any random string — names the throwaway CI keychain |
+| `APPLE_ID` | your Apple Developer account email |
+| `APPLE_TEAM_ID` | the 10-char Team ID |
+| `APPLE_APP_SPECIFIC_PASSWORD` | the app-specific password from 6a-4 |
+
+`MACOS_CERTIFICATE` gates the whole path: with it set, `release.yml` imports the
+cert into a temporary keychain and the packaging scripts switch to Developer ID
+signing + notarization; without it the release stays ad-hoc. **Never commit any
+of these values.**
+
+### 6c. Cut a signed + notarized release
+
+Same trigger as before — push a `v*.*.*` tag:
+
+```bash
+git tag v0.2.0 && git push origin v0.2.0   # release.yml signs + notarizes + staples
+```
+
+Or run it locally (the scripts auto-detect the env vars; absent → ad-hoc):
+
+```bash
+export DEVELOPER_ID_APPLICATION="Developer ID Application: Andy Wu (TEAMID)"
+export APPLE_ID="you@example.com"
+export APPLE_TEAM_ID="TEAMID"
+export APPLE_APP_SPECIFIC_PASSWORD="abcd-efgh-ijkl-mnop"
+# (optional) instead of the Apple-ID triplet, store a notarytool profile once:
+#   xcrun notarytool store-credentials burnbar-notary \
+#     --apple-id "$APPLE_ID" --team-id "$APPLE_TEAM_ID" \
+#     --password "$APPLE_APP_SPECIFIC_PASSWORD"
+#   export NOTARY_KEYCHAIN_PROFILE=burnbar-notary
+./Scripts/package_app.sh   # signs (hardened runtime) → notarizes zip → staples app → re-zips
+./Scripts/make_dmg.sh      # reuses the signed app → signs+notarizes+staples the DMG
+```
+
+`Scripts/sign_and_notarize.sh` does the signing/notarization; it signs the
+embedded `BurnbarCore.framework` and the bundled Sparkle helpers
+(`Autoupdate`, `Downloader.xpc`, `Installer.xpc`) **before** the app, all with
+`--options runtime` + a secure timestamp, then `notarytool submit --wait` and
+`stapler staple`. Verify a downloaded artifact opens cleanly:
+
+```bash
+spctl --assess --type execute --verbose=4 /Applications/Burnbar.app   # → accepted
+codesign --verify --deep --strict --options=runtime --verbose=2 /Applications/Burnbar.app
+```
+
+After this ships, drop the `postflight`/quarantine-strip from `Casks/burnbar.rb`
+(it is only needed for ad-hoc builds).
+
+> Status: the Developer ID / notarization path is **operator-verified only** — it
+> has not been run end-to-end in CI because that needs the cert + credentials
+> above. The ad-hoc path remains fully tested and is the default until 6b is done.
