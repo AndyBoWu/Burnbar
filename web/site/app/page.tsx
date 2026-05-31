@@ -73,6 +73,81 @@ const MIN_MACOS = "macOS 14 (Sonoma)";
  */
 const IS_NOTARIZED = false;
 
+/**
+ * Whether real app screenshots have been added (issue #177).
+ *
+ * The "See Burnbar in action" section renders nothing while this is `false`, so
+ * the live page stays clean until real assets exist — no broken images, no
+ * empty frames. To turn the section on:
+ *   1. Run `./Scripts/capture_screenshots.sh` on a Mac with Screen Recording
+ *      permission (it drops PNGs into `public/screenshots/`).
+ *   2. Review each PNG for stray paths/project names (privacy — see
+ *      `public/screenshots/README.md`).
+ *   3. Flip this to `true`. The section then renders whichever of the
+ *      `SCREENSHOTS` below have a file present (mark `available: true`).
+ * No other edits needed.
+ */
+const HAS_SCREENSHOTS = false;
+
+type Screenshot = {
+  /** Path under `public/` — e.g. `/screenshots/popover.png`. */
+  src: string;
+  /** Descriptive alt text (required for accessibility). */
+  alt: string;
+  /** Short caption shown under the frame. */
+  caption: string;
+  /**
+   * Intrinsic pixel dimensions. Set explicit width/height so the browser
+   * reserves space before the lazy image loads (zero layout shift). Update
+   * these to match your real PNG's aspect ratio if it differs.
+   */
+  width: number;
+  height: number;
+  /** Span the full row (used for the wide menu-bar banner). */
+  wide?: boolean;
+  /** Flip to `true` once the matching PNG exists in `public/screenshots/`. */
+  available: boolean;
+};
+
+// The app-preview gallery. Each entry maps to a file documented in
+// `public/screenshots/README.md`. Only entries with `available: true` render,
+// so the operator can ship images one at a time.
+const SCREENSHOTS: Screenshot[] = [
+  {
+    src: "/screenshots/menubar.png",
+    alt: "Burnbar's flame status item in the macOS menu bar, showing today's token spend next to the clock.",
+    caption: "Lives in your menu bar — today's burn at a glance.",
+    width: 1600,
+    height: 200,
+    wide: true,
+    available: false,
+  },
+  {
+    src: "/screenshots/popover.png",
+    alt: "Burnbar's popover listing Claude Code and OpenAI Codex token usage with per-provider costs for today.",
+    caption: "The popover: per-provider tokens and cost.",
+    width: 720,
+    height: 960,
+    available: false,
+  },
+  {
+    src: "/screenshots/empty-state.png",
+    alt: "Burnbar's popover empty state, shown before any usage has been recorded, with guidance on getting started.",
+    caption: "A friendly, actionable empty state on day one.",
+    width: 720,
+    height: 960,
+    available: false,
+  },
+  {
+    src: "/screenshots/settings.png",
+    alt: "Burnbar's Settings window showing provider toggles and the opt-in leaderboard controls.",
+    caption: "Settings: providers and the opt-in leaderboard.",
+    width: 1280,
+    height: 900,
+    available: false,
+  },
+];
+
 export const metadata: Metadata = {
   title: LANDING_TITLE,
   description: LANDING_DESCRIPTION,
@@ -454,6 +529,61 @@ export default async function HomePage() {
             ))}
           </ol>
         </section>
+
+        {/*
+          App-preview gallery (issue #177). ASSET-GATED: renders only when
+          HAS_SCREENSHOTS is true AND at least one screenshot is marked
+          available. While false (the default), this whole section renders
+          nothing, so the live page is unaffected and there are no broken
+          images. Flip HAS_SCREENSHOTS once real PNGs land in
+          public/screenshots/ — see that folder's README.
+
+          Uses plain <img> (not next/image) with explicit width/height +
+          loading="lazy": this keeps the page a fully static export under the
+          next-on-pages / Cloudflare setup (no image-optimization loader), while
+          still reserving layout space to keep CLS at zero. The responsive grid
+          stacks to one column on mobile so nothing clips.
+        */}
+        {HAS_SCREENSHOTS && SCREENSHOTS.some((s) => s.available) && (
+          <section
+            aria-labelledby="preview-heading"
+            className="border-t border-zinc-900 py-20"
+          >
+            <h2
+              id="preview-heading"
+              className="text-2xl font-bold tracking-tight text-zinc-50 sm:text-3xl"
+            >
+              See Burnbar in action
+            </h2>
+            <p className="mt-4 max-w-2xl text-zinc-300">
+              A native menu-bar app — here’s exactly what shows up on your Mac.
+            </p>
+            <div className="mt-10 grid grid-cols-1 gap-6 sm:grid-cols-2">
+              {SCREENSHOTS.filter((s) => s.available).map((shot) => (
+                <figure
+                  key={shot.src}
+                  className={`overflow-hidden rounded-xl border border-zinc-800 bg-zinc-900/40 ${
+                    shot.wide ? "sm:col-span-2" : ""
+                  }`}
+                >
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={shot.src}
+                    alt={shot.alt}
+                    width={shot.width}
+                    height={shot.height}
+                    loading="lazy"
+                    decoding="async"
+                    className="h-auto w-full"
+                  />
+                  <figcaption className="border-t border-zinc-800 px-5 py-3 text-sm text-zinc-400">
+                    {shot.caption}
+                  </figcaption>
+                </figure>
+              ))}
+            </div>
+          </section>
+        )}
 
         <section
           aria-labelledby="privacy-heading"

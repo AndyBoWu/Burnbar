@@ -176,3 +176,31 @@ After this ships, drop the `postflight`/quarantine-strip from `Casks/burnbar.rb`
 > Status: the Developer ID / notarization path is **operator-verified only** — it
 > has not been run end-to-end in CI because that needs the cert + credentials
 > above. The ad-hoc path remains fully tested and is the default until 6b is done.
+
+## 7. Landing-page screenshots (#177)
+
+The website's "See Burnbar in action" section is **asset-gated**: it ships
+hidden until real app PNGs exist, because screenshots can't be captured in CI
+(no Screen Recording permission, and the popover needs a live display). Only you
+can produce them.
+
+1. On a Mac, grant Screen Recording to your terminal: System Settings → Privacy
+   & Security → Screen Recording → enable for Terminal/iTerm/VS Code, then quit
+   and reopen that terminal so the permission takes effect.
+2. Run the capture tool — it builds + launches `Burnbar.app` and walks you
+   through each shot:
+
+   ```bash
+   ./Scripts/capture_screenshots.sh   # → web/site/public/screenshots/*.png
+   ```
+
+   It saves `menubar.png`, `popover.png`, `empty-state.png`, and `settings.png`.
+   Filenames + recommended dimensions are in
+   `web/site/public/screenshots/README.md`.
+3. **Privacy check:** Burnbar's UI can surface project names/paths. Use a clean
+   demo profile and eyeball every PNG before committing — no real paths, project
+   names, git branches, or prompts may ship.
+4. Set `const HAS_SCREENSHOTS = false;` → `true` in `web/site/app/page.tsx`, and
+   flip each `available: false` → `true` for the images you added. Run
+   `cd web/site && pnpm typecheck && pnpm build` to confirm it's still green and
+   static, then commit the PNGs + the flip. Once live, close #177.
